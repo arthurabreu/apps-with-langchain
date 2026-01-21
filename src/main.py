@@ -43,3 +43,11 @@ def main():
 
 if __name__ == "__main__":
     main()
+
+    # --- EXAMPLES FROM example_langchain_usage.py ---
+    try:
+        from example_langchain_usage import main as example_langchain_main
+        print("\n[DEMO] Now running LangChain Environment Variable Examples:\n")
+        example_langchain_main()
+    except ImportError:
+        print("[!] Cannot find example_langchain_usage.py or its main() function.")
