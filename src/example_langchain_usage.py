@@ -18,6 +18,7 @@ def example_openai_usage():
         
         # Get API key from environment
         api_key = os.getenv("OPENAI_API_KEY")
+        model = "gpt-3.5-turbo"
         
         if not api_key or api_key == "your-openai-api-key-here":
             print("[X] OpenAI API key not configured. Please set OPENAI_API_KEY in your .env file.")
@@ -26,15 +27,12 @@ def example_openai_usage():
         # Initialize ChatOpenAI with environment variable
         llm = ChatOpenAI(
             api_key=api_key,  # This will use the environment variable
-            model="gpt-3.5-turbo",
+            model=model,
             temperature=0.7
         )
         
         print("[OK] OpenAI ChatGPT initialized successfully!")
-        
-        # Example usage
-        response = llm.invoke("Hello! How are you?")
-        print(f"Response: {response.content}")
+        print(f"Using model: {model}")
         
     except ImportError:
         print("[X] langchain-openai not installed. Run: pip install langchain-openai")
