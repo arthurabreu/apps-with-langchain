@@ -1,38 +1,87 @@
-# Core LangChain dependencies
-langchain>=0.1.0
-langchain-community>=0.0.10
-langchain-core>=0.1.0
+# Core packages (2026 versions)
+langchain>=2.0.0               # Major version bump expected
+langchain-community>=1.0.0     # Stable community package
+langchain-core>=1.0.0         # Core stabilized
+langchain-cli>=0.2.0          # New CLI tool for project management
 
-# OpenAI integration (most common for learning)
-langchain-openai>=0.0.5
-openai>=1.0.0
+# LLM Integration
+langchain-openai>=1.0.0       # OpenAI integration
+openai>=2.0.0                 # Major OpenAI SDK update
+langchain-anthropic>=1.0.0    # Anthropic/Claude integration
+anthropic>=2.0.0              # Major Anthropic SDK update
+langchain-gemini>=1.0.0       # Google Gemini integration
+google-cloud-aiplatform>=5.0.0
 
-# Vector stores for embeddings and retrieval
-chromadb>=0.4.0
-faiss-cpu>=1.7.0
+# Vector stores and embeddings (2026 projections)
+chromadb>=1.0.0              # Major version with enhanced features
+faiss-cpu>=2.0.0            # Updated FAISS with new algorithms
+pgvector>=1.0.0             # PostgreSQL vector extension
+milvus-sdk>=3.0.0          # Milvus client
 
-# Document loaders and text processing
-pypdf>=3.0.0
-python-docx>=0.8.11
-beautifulsoup4>=4.12.0
-requests>=2.31.0
+# Document processing and extraction
+unstructured>=1.0.0         # Enhanced document processing
+pypdf>=4.0.0               # PDF processing
+python-docx>=1.0.0         # Word document processing
+beautifulsoup4>=5.0.0      # HTML parsing
+markdown>=4.0.0            # Markdown processing
+pdfminer.six>=20260101     # PDF text extraction
 
-# Environment management
-python-dotenv>=1.0.0
+# API and networking
+requests>=3.0.0            # HTTP requests
+httpx>=1.0.0              # Async HTTP client
+aiohttp>=4.0.0            # Async IO HTTP
+fastapi>=1.0.0            # API framework
+uvicorn>=1.0.0            # ASGI server
 
-# Jupyter notebook support (great for learning)
-jupyter>=1.0.0
-ipykernel>=6.25.0
+# Environment and configuration
+python-dotenv>=2.0.0      # Environment management
+pydantic>=3.0.0          # Data validation
+typing-extensions>=5.0.0  # Enhanced typing support
 
-# Optional but useful for advanced features
-tiktoken>=0.5.0  # Token counting for OpenAI models
-numpy>=1.24.0
-pandas>=2.0.0
+# Token management and utilities
+tiktoken>=1.0.0           # Token counting for various LLMs
+tokenizers>=1.0.0         # Hugging Face tokenizers
 
-# Web scraping and API tools
-httpx>=0.24.0
-aiohttp>=3.8.0
+# Data science and processing
+numpy>=2.0.0              # Numerical computing
+pandas>=3.0.0             # Data manipulation
+polars>=1.0.0            # Fast DataFrame library
+pyarrow>=14.0.0          # Apache Arrow
 
-# Additional useful libraries for LangChain apps
-streamlit>=1.28.0  # For building simple web interfaces
-gradio>=3.50.0     # Alternative UI framework
+# Machine Learning utilities
+scikit-learn>=2.0.0       # ML utilities
+torch>=3.0.0              # PyTorch
+transformers>=6.0.0       # Hugging Face Transformers
+
+# Development and testing
+jupyter>=2.0.0            # Notebook interface
+ipykernel>=7.0.0         # IPython kernel
+pytest>=8.0.0            # Testing framework
+black>=24.0.0            # Code formatting
+mypy>=2.0.0              # Static type checking
+
+# UI and visualization
+streamlit>=2.0.0          # Web app framework
+gradio>=5.0.0            # ML interface builder
+plotly>=6.0.0            # Interactive plotting
+bokeh>=4.0.0             # Visualization library
+
+# Monitoring and logging
+wandb>=1.0.0             # Experiment tracking
+mlflow>=4.0.0            # ML lifecycle
+prometheus-client>=1.0.0  # Metrics collection
+grafana-client>=1.0.0    # Monitoring dashboards
+
+# Security and authentication
+python-jose>=4.0.0       # JWT token handling
+passlib>=2.0.0           # Password hashing
+cryptography>=42.0.0     # Cryptographic recipes
+
+# Cache and storage
+redis>=5.0.0             # Redis client
+pymongo>=5.0.0           # MongoDB client
+sqlalchemy>=3.0.0        # SQL toolkit
+
+# Optional but recommended
+ray>=3.0.0               # Distributed computing
+dask>=2024.1.0          # Parallel computing
