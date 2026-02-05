@@ -166,21 +166,41 @@ class TokenManager:
             return cls.MODEL_ALIASES[model]["model"]
         return model
 
-    def count_tokens(self, text: str, model: str = "gpt-4o-mini") -> int:
+    def count_tokens(self, text: str, model: str = "gpt-3.5-turbo") -> int:
         """Count tokens in a text string for a specific model"""
+        if not isinstance(text, str):
+            print(f"Warning: Expected string but got {type(text)}. Converting to string.")
+            text = str(text) if text is not None else ""
+
         try:
-            model = self.resolve_model(model)
-            encoding = tiktoken.encoding_for_model(model)
+            # Map newer models to their encoding base models
+            model_to_encoding = {
+                "gpt-4": "cl100k_base",
+                "gpt-3.5-turbo": "cl100k_base",
+                "gpt-4-turbo": "cl100k_base",
+                "text-embedding-ada-002": "cl100k_base",
+            }
+            
+            try:
+                # Try getting encoding for the exact model
+                encoding = tiktoken.encoding_for_model(model)
+            except KeyError:
+                # If that fails, use the base encoding for the model family
+                base_encoding = model_to_encoding.get(model.split('-')[0], "cl100k_base")
+                print(f"Using base encoding {base_encoding} for model {model}")
+                encoding = tiktoken.get_encoding(base_encoding)
+            
             return len(encoding.encode(text))
         except Exception as e:
             print(f"Error counting tokens for model '{model}': {e}")
-            # Fallback to a general encoding to at least provide a count
+            # Fallback to cl100k_base encoding
             try:
-                encoding = tiktoken.get_encoding("o200k_base")
+                print("Falling back to cl100k_base encoding")
+                encoding = tiktoken.get_encoding("cl100k_base")
                 return len(encoding.encode(text))
             except Exception as e2:
                 print(f"Fallback encoding failed: {e2}")
-                return 0
+                return len(text.split()) * 4  # Very rough estimation
 
     def estimate_cost(self, num_tokens: int, model: str, is_output: bool = False) -> float:
         """Estimate cost for token usage"""

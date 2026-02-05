@@ -46,6 +46,7 @@ def run_sample_openai_call(token_manager: TokenManager, model: str = "gpt-4o-min
     print("\n[TokenManager] Prompt analysis")
     print(f"- Model: {model}")
     print(f"- Prompt tokens: {prompt_tokens}")
+    print(f"- Context used by prompt: {tokens_used} tokens")
     print(f"- Context remaining before call: {remaining} tokens ({usage_percent:.3f}% used)")
     print(f"- Estimated prompt input cost: ${est_prompt_cost:.6f}")
 
@@ -93,16 +94,16 @@ def main():
     openai_key = os.getenv("OPENAI_API_KEY")
     google_key = os.getenv("GOOGLE_API_KEY")
     huggingface_key = os.getenv("HUGGINGFACE_API_KEY")
-    anthropic_key = os.getenv("ANTHROPIC_API_KEY")
+    claude_key = os.getenv("CLAUDE_API_KEY")
     
     # Check status of each key
     openai_configured = openai_key and openai_key != "your-openai-api-key-here"
     google_configured = google_key and google_key != "your-google-api-key-here"
     huggingface_configured = huggingface_key and huggingface_key != "your-huggingface-api-key-here"
-    anthropic_configured = anthropic_key and anthropic_key != "your-anthropic-api-key-here"
+    claude_configured = claude_key and claude_key != "your-claude-api-key-here"
     
     # Count how many keys are configured
-    configured_count = sum([openai_configured, google_configured, huggingface_configured, anthropic_configured])
+    configured_count = sum([openai_configured, google_configured, huggingface_configured, claude_configured])
     
     # Only show API Key Status block if NO keys are configured
     if configured_count == 0:
@@ -123,7 +124,7 @@ def main():
         print(f"OpenAI: {'[OK] Configured' if openai_configured else '[X] Not configured'}")
         print(f"Google: {'[OK] Configured' if google_configured else '[X] Not configured'}")
         print(f"Hugging Face: {'[OK] Configured' if huggingface_configured else '[X] Not configured'}")
-        print(f"Anthropic: {'[OK] Configured' if anthropic_configured else '[X] Not configured'}")
+        print(f"Anthropic: {'[OK] Configured' if claude_configured else '[X] Not configured'}")
     
     # Environment settings
     environment = os.getenv("ENVIRONMENT", "production")

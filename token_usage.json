@@ -1,0 +1,44 @@
+[
+  {
+    "timestamp": "2026-02-04T22:27:05.105952",
+    "model": "gpt-4o-mini",
+    "tokens_used": 28,
+    "estimated_cost": 4.2e-06,
+    "operation_type": "analysis"
+  },
+  {
+    "timestamp": "2026-02-04T22:27:05.106701",
+    "model": "gpt-4o",
+    "tokens_used": 28,
+    "estimated_cost": 7e-05,
+    "operation_type": "analysis"
+  },
+  {
+    "timestamp": "2026-02-04T22:27:05.107160",
+    "model": "gpt-4.1",
+    "tokens_used": 28,
+    "estimated_cost": 5.6e-05,
+    "operation_type": "analysis"
+  },
+  {
+    "timestamp": "2026-02-04T22:27:07.846675",
+    "model": "text-embedding-3-small",
+    "tokens_used": 9,
+    "estimated_cost": 1.8e-07,
+    "operation_type": "embedding"
+  },
+  {
+    "timestamp": "2026-02-04T23:02:02.155213",
+    "model": "claude-haiku-4-5-20251001",
+    "tokens_used": 3,
+    "estimated_cost": 0.0,
+    "operation_type": "claude_prompt"
+  },
+  {
+    "timestamp": "2026-02-04T23:02:02.155667",
+    "model": "claude-haiku-4-5-20251001",
+    "tokens_used": 16,
+    "estimated_cost": 0.0,
+    "operation_type": "claude_response"
+  }
+]
