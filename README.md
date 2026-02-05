@@ -27,8 +27,7 @@ GOOGLE_CSE_ID=seu-google-cse-id-aqui
 HUGGINGFACE_API_KEY=sua-chave-huggingface-aqui
 
 # Anthropic API Key (for Claude models)
-ANTHROPIC_API_KEY=sua-chave-anthropic-aqui
-```
+ANTHROPIC_API_KEY=sua-chave-anthropic-aqui```
 
 ### 3. Executar o Projeto
 
