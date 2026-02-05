@@ -24,13 +24,13 @@ class ModelComparison:
         if prompts is None:
             prompts = [
                 {
+                    "name": "Kotlin Palindrome",
+                    "prompt": "Write a Kotlin function that checks if a string is a palindrome. Make it case-insensitive and ignore non-alphanumeric characters."
+                },
+                {
                     "name": "Kotlin Coroutine",
                     "prompt": "Write a Kotlin function that uses coroutines to fetch data from two APIs concurrently. Include error handling and timeouts."
                 },
-                {
-                    "name": "Kotlin Palindrome",
-                    "prompt": "Write a Kotlin function that checks if a string is a palindrome. Make it case-insensitive and ignore non-alphanumeric characters."
-                }
             ]
         
         print("\n" + "=" * 60)
@@ -47,7 +47,7 @@ class ModelComparison:
             print(f"[SKIP] Local model not available: {e}")
         
         try:
-            from .openai_model import OpenAIModel
+            from openai_model import OpenAIModel
             models_to_test.append(("OpenAI GPT", OpenAIModel()))
         except Exception as e:
             print(f"[SKIP] OpenAI model not available: {e}")

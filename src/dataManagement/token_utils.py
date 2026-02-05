@@ -4,7 +4,7 @@ Helps monitor token usage, costs, and limits for different models.
 """
 
 import tiktoken
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, List, Tuple
 from dataclasses import dataclass
 import json
 from datetime import datetime
