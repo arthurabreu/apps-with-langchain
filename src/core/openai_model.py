@@ -50,7 +50,7 @@ class OpenAIModel:
             api_key=api_key
         )
     
-    def generate(self, prompt: str, **kwargs) -> str:
+    def generate(self, prompt: str, skip_prompt: bool = False, **kwargs) -> Optional[str]:
         """
         Generate text from a prompt with token tracking.
         
@@ -75,6 +75,11 @@ class OpenAIModel:
             print(f"- Context window remaining: {remaining} tokens ({usage_percent:.2f}% used)")
             print(f"- Estimated input cost: ${est_cost:.6f}")
             
+            # Check if user wants to continue
+            if not skip_prompt and not prompt_continue():
+                print("[INFO] Generation skipped by user.")
+                return None
+                
             print(f"\n[PROMPT] {prompt[:100]}...")
             print("[GENERATING] Using OpenAI...")
             

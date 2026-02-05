@@ -155,7 +155,7 @@ class LocalHuggingFaceModel:
             print(f"[ERROR] Failed to initialize model: {e}")
             raise
     
-    def generate(self, prompt: str, **kwargs) -> str:
+    def generate(self, prompt: str, skip_prompt: bool = False, **kwargs) -> Optional[str]:
         """
         Generate text from a prompt.
         
@@ -172,9 +172,27 @@ class LocalHuggingFaceModel:
             if self._pipeline is None:
                 self._initialize_model()
             
+            # Initialize TokenManager if not already done
+            if not hasattr(self, 'token_manager'):
+                from .token_utils import TokenManager
+                self.token_manager = TokenManager()
+            
             # Format the prompt for better results
             formatted_prompt = self._format_prompt(prompt)
             
+            # Token analysis before generation
+            prompt_tokens = len(self._tokenizer.encode(formatted_prompt))
+            model_name = f"huggingface/{self.model_id.split('/')[-1]}"  # Use as identifier for logging
+            
+            print("\n[TokenManager] Prompt Analysis:")
+            print(f"- Input tokens: {prompt_tokens}")
+            print(f"- Model: {model_name}")
+            
+            # Check if user wants to continue
+            if not skip_prompt and not prompt_continue():
+                print("[INFO] Generation skipped by user.")
+                return None
+                
             print(f"\n[PROMPT] {prompt[:100]}{'...' if len(prompt) > 100 else ''}")
             
             # Start spinner
@@ -201,6 +219,21 @@ class LocalHuggingFaceModel:
                 response = generated_text[len(formatted_prompt):].strip()
             else:
                 response = generated_text
+            
+            # Token analysis after generation
+            response_tokens = len(self._tokenizer.encode(response))
+            print("\n[TokenManager] Response Analysis:")
+            print(f"- Output tokens: {response_tokens}")
+            
+            # Log usage (using placeholder costs since local inference is free)
+            self.token_manager.log_usage(model_name, prompt_tokens, "hf_prompt", is_output=False)
+            self.token_manager.log_usage(model_name, response_tokens, "hf_response", is_output=True)
+            
+            # Show summary
+            summary = self.token_manager.get_usage_summary()
+            print("\n[TokenManager] Session Summary:")
+            print(f"- Total tokens used: {summary['total_tokens']}")
+            print(f"- Total estimated cost: ${summary['total_cost']:.6f}")
             
             return response
             
