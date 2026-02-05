@@ -46,10 +46,7 @@ def example_claude_usage():
     try:
         # Correct imports for split LangChain packages
         from langchain_anthropic import ChatAnthropic
-        try:
-            from langchain_core.messages import HumanMessage, SystemMessage
-        except ImportError:
-            from langchain.schema import HumanMessage, SystemMessage
+        from langchain_core.messages import HumanMessage, SystemMessage
         from token_utils import TokenManager
 
         # Resolve API key (prefer ANTHROPIC_API_KEY, fallback to legacy CLAUDE_API_KEY)
