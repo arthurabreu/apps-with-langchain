@@ -6,7 +6,6 @@ import os
 from typing import Optional, Dict, Any
 from langchain_anthropic import ChatAnthropic
 from langchain_core.prompts import ChatPromptTemplate
-from token_utils import TokenManager
 
 class ClaudeModel:
     """
@@ -35,8 +34,7 @@ class ClaudeModel:
         # Check API key
         api_key = os.getenv("ANTHROPIC_API_KEY")
         if not api_key or "your-" in api_key.lower():
-            raise ValueError("Anthropic API key not configured. Add ANTHROPIC_API_KEY to .env file")
-        
+            raise ValueError("Anthropic API key not configured. Add ANTHROPIC_API_KEY to .env file")        
         print(f"\n[INFO] Initializing Claude model: {self.model_name}")
         print(f"[INFO] Temperature: {temperature}")
         print(f"[INFO] Max tokens: {max_tokens}")
@@ -49,9 +47,9 @@ class ClaudeModel:
             api_key=api_key
         )
     
-    def generate(self, prompt: str, **kwargs) -> str:
+    def generate(self, prompt: str, skip_prompt: bool = False, **kwargs) -> Optional[str]:
         """
-        Generate text from a prompt with token tracking.
+        Generate text from a prompt.
         
         Args:
             prompt: Input text prompt
@@ -61,22 +59,11 @@ class ClaudeModel:
             Generated text
         """
         try:
-            # Token analysis before generation
-            system_msg = "You are a helpful Kotlin programming assistant."
-            full_prompt = f"{system_msg}\n{prompt}"
-            
-            # Try to count tokens - use a fallback model if Claude model isn't supported
-            try:
-                prompt_tokens = self.token_manager.count_tokens(full_prompt, self.model_name)
-            except:
-                # Fallback to GPT-4 tokenizer for estimation
-                prompt_tokens = self.token_manager.count_tokens(full_prompt, "gpt-4")
-            
-            print("\n[TokenManager] Prompt Analysis:")
-            print(f"- Input tokens: {prompt_tokens}")
-            print(f"- Model: {self.model_name}")
-            print("- Cost estimation: Not available for Claude models")
-            
+            # Check if user wants to continue
+            if not skip_prompt and not prompt_continue():
+                print("[INFO] Generation skipped by user.")
+                return None
+                
             print(f"\n[PROMPT] {prompt[:100]}...")
             print("[GENERATING] Using Claude...")
             
@@ -91,32 +78,9 @@ class ClaudeModel:
             
             # Generate response
             response = self._model.invoke(formatted_prompt)
-            response_text = response.content
-            
-            # Token analysis after generation
-            try:
-                response_tokens = self.token_manager.count_tokens(response_text, self.model_name)
-            except:
-                # Fallback to GPT-4 tokenizer for estimation
-                response_tokens = self.token_manager.count_tokens(response_text, "gpt-4")
-            
-            print("\n[TokenManager] Response Analysis:")
-            print(f"- Output tokens: {response_tokens}")
-            print("- Cost estimation: Not available for Claude models")
-            
-            # Log usage (using fallback model name for compatibility)
-            fallback_model = "gpt-4"  # Use for logging since Claude models aren't in TokenManager
-            self.token_manager.log_usage(fallback_model, prompt_tokens, "claude_prompt", is_output=False)
-            self.token_manager.log_usage(fallback_model, response_tokens, "claude_response", is_output=True)
-            
-            # Show session summary
-            summary = self.token_manager.get_usage_summary()
-            print("\n[TokenManager] Session Summary:")
-            print(f"- Total tokens used: {summary['total_tokens']}")
-            print(f"- Total estimated cost: Not available for Claude models")
             
             print("[SUCCESS] Generation complete!")
-            return response_text
+            return response.content
             
         except Exception as e:
             print(f"[ERROR] Generation failed: {e}")
