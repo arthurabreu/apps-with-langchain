@@ -1,5 +1,7 @@
 # models/claude_model.py
 
+**📍 Reading Order:** #8 of 10 core docs | [← Back to Index](../index.md) | [Next: strategies/standard_generation.md →](../strategies/standard_generation.md)
+
 > Claude language model implementation. Extends ILanguageModel (ABC) and integrates with strategies, token management, and user interaction.
 
 ## What This File Does
@@ -326,3 +328,9 @@ except Exception as e:
     self.user_interaction.display_error(msg)
     raise GenerationError(msg)  # Wrap in domain-specific exception
 ```
+
+---
+
+**[← Previous](model_factory.md) | [Back to Index](../index.md) | [Next →](../strategies/standard_generation.md)**
+
+*Read next: strategies/standard_generation.md — understand synchronous generation*

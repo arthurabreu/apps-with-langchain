@@ -1,5 +1,7 @@
 # services.py
 
+**📍 Reading Order:** #5 of 10 core docs | [← Back to Index](index.md) | [Next: utils.md →](utils.md)
+
 > Contains concrete implementations of core services: config management, user interaction, API validation, and logging.
 
 ## What This File Does
@@ -234,3 +236,9 @@ logger.info("Claude model initialized")
    - All logs go to both console (via `print()` in display methods) and file
 
 **Key insight:** These are **concrete implementations** of Protocols from `interfaces.py`. They're injected via the DI container so they can be easily mocked in tests.
+
+---
+
+**[← Previous](dependency_injection.md) | [Back to Index](index.md) | [Next →](utils.md)**
+
+*Read next: utils.md — understand convenience functions*

@@ -1,5 +1,7 @@
 # exceptions.py
 
+**📍 Reading Order:** #3 of 10 core docs | [← Back to Index](index.md) | [Next: dependency_injection.md →](dependency_injection.md)
+
 > Defines a hierarchical custom exception structure for better error handling and debugging throughout the application.
 
 ## What This File Does
@@ -256,6 +258,10 @@ Raised by generation strategies.
 | `raise SomeError(...)` | `throw SomeError(...)` | All usage sites |
 | `except SomeError:` | `catch (e: SomeError)` | Error handling code |
 | Multi-level inheritance | `class A : B`, `class B : C`, `class C : Exception` | Exception tree |
+
+---
+
+**[← Previous](interfaces.md) | [Back to Index](index.md) | [Next →](dependency_injection.md)**
 
 ---
 

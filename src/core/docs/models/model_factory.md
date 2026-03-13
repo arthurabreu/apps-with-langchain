@@ -1,5 +1,7 @@
 # models/model_factory.md
 
+**📍 Reading Order:** #7 of 10 core docs | [← Back to Index](../index.md) | [Next: claude_model.md →](claude_model.md)
+
 > Factory pattern implementation for creating language models. Handles provider registry, API key validation, and dependency injection wiring.
 
 ## What This File Does
@@ -361,3 +363,9 @@ config = ModelConfig(model_name="my-model")
 model = factory.create_model("mycustom", config)
 # Works! No changes to create_model() code
 ```
+
+---
+
+**[← Previous](../utils.md) | [Back to Index](../index.md) | [Next →](claude_model.md)**
+
+*Read next: claude_model.md — see a specific model implementation*

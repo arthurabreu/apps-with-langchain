@@ -128,12 +128,41 @@ container.register_instance(IUserInteraction, MockUserInteraction())
 
 ---
 
-## Key Files to Read First
+## Recommended Reading Order
 
-1. **interfaces.py** — understand the contracts
-2. **dependency_injection.py** — see how it all wires together
-3. **models/claude_model.py** — see a concrete model implementation
-4. **strategies/standard_generation.py** — see how generation works
-5. **models/model_factory.py** — see how models are created
+**Core Learning Path** (start here):
 
-Then explore specific files based on what you're debugging or adding.
+| # | File | Purpose | Read time |
+|---|------|---------|-----------|
+| 1 | [index.md](index.md) | Start here — architecture overview | 5 min |
+| 2 | [interfaces.md](interfaces.md) | Understand all contracts & data classes | 10 min |
+| 3 | [exceptions.md](exceptions.md) | Learn the error hierarchy | 8 min |
+| 4 | [dependency_injection.md](dependency_injection.md) | See how DI container wires everything | 12 min |
+| 5 | [services.md](services.md) | Understand concrete implementations | 10 min |
+| 6 | [utils.md](utils.md) | Learn convenience functions | 5 min |
+| 7 | [models/model_factory.md](models/model_factory.md) | Understand how models are created | 8 min |
+| 8 | [models/claude_model.md](models/claude_model.md) | See a specific model implementation | 10 min |
+| 9 | [strategies/standard_generation.md](strategies/standard_generation.md) | Learn synchronous generation | 10 min |
+| 10 | [strategies/streaming_generation.md](strategies/streaming_generation.md) | Learn streaming generation | 10 min |
+
+**Optional/Reference** (explore as needed):
+
+| File | When to read |
+|------|-------------|
+| [token_utils.md](token_utils.md) | When you need to understand token/cost tracking |
+| [langchain_huggingface_local.md](langchain_huggingface_local.md) | When exploring local model support (educational) |
+| [model_comparison.md](model_comparison.md) | When benchmarking different models |
+
+**Estimated total reading time:** 90 minutes for core path
+
+---
+
+## Navigation Tips
+
+Each file has **navigation links** at the top and bottom:
+- Click "Next →" to jump to the recommended next file
+- Click "← Previous" to go back
+- Click "📍 Back to Index" to return here anytime
+- Look for `[Read next: filename.md →]` at bottom of each file
+
+**Pro tip:** Open this index in one browser tab, then open individual files in other tabs as you read. Use the navigation links to move through the learning path.
