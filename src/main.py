@@ -7,6 +7,9 @@ import os
 import sys
 from dotenv import load_dotenv
 
+# Add project root to path so we can import test files
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
 # Load environment variables from .env file
 load_dotenv()
 
@@ -234,7 +237,7 @@ def test_claude_model():
     """Test the Claude model with different prompts."""
     print("[TEST] Claude Model Demo")
     print("-" * 40)
-    
+
     # Check if Claude API key is configured
     claude_key = os.getenv("ANTHROPIC_API_KEY")
     if not claude_key or "your-" in claude_key.lower():
@@ -242,13 +245,15 @@ def test_claude_model():
         print("Add your ANTHROPIC_API_KEY to the .env file")
         print("Format: ANTHROPIC_API_KEY=your-actual-key-here")
         return
-    
+
     try:
-        from core.claude_model import ClaudeModel
-        
-        # Initialize Claude model
-        claude_model = ClaudeModel()
-        
+        from core.dependency_injection import get_container
+        from core.interfaces import ModelConfig
+
+        # Get services from DI container
+        container = get_container()
+        factory = container.get_model_factory()
+
         # Test prompts
         test_prompts = [
             {
@@ -264,25 +269,32 @@ def test_claude_model():
                 "prompt": "Explain Kotlin coroutines to a beginner. Keep it under 150 words."
             }
         ]
-        
+
         for i, test in enumerate(test_prompts, 1):
             print(f"\n[{i}/{len(test_prompts)}] Testing: {test['name']}")
             print(f"Prompt: {test['prompt']}")
             print("-" * 40)
-            
+
             try:
-                response = claude_model.generate(test['prompt'])
-                print(f"Response:\n{response}")
+                config = ModelConfig(
+                    model_name="claude-3-haiku-20240307",
+                    system_message="You are a helpful assistant.",
+                    max_tokens=512,
+                    temperature=0.2,
+                )
+                claude_model = factory.create_model("anthropic", config)
+                result = claude_model.generate(test['prompt'])
+                print(f"Response:\n{result.content}")
             except Exception as e:
                 print(f"Error: {e}")
-            
+
             if i < len(test_prompts):
                 input("\nPress Enter to continue to next test...")
-        
+
         print("\n" + "=" * 40)
         print("Claude Model Testing Complete!")
         print("=" * 40)
-        
+
     except ImportError as e:
         print(f"[ERROR] Missing dependencies for Claude: {e}")
         print("Install with: pip install langchain-anthropic")
@@ -689,6 +701,130 @@ def show_system_info():
     print("  • Restart VS Code if memory gets too high")
     print("=" * 60)
 
+def select_context():
+    """
+    Display context menu and return selected prompt context details.
+
+    Returns:
+        Tuple of (context_key, system_message, max_tokens, temperature)
+    """
+    from core.dependency_injection import get_container
+
+    container = get_container()
+    prompt_manager = container.get_prompt_manager()
+    prompts = prompt_manager.list_prompts()
+
+    keys = list(prompts.keys())
+
+    print("\n" + "=" * 60)
+    print("Select Development Context")
+    print("=" * 60)
+
+    for i, (key, desc) in enumerate(prompts.items(), 1):
+        print(f"{i}. {desc}")
+
+    print()
+    choice = input("Enter choice (number): ").strip()
+
+    try:
+        idx = int(choice) - 1
+        if idx < 0 or idx >= len(keys):
+            print("[ERROR] Invalid choice.")
+            return None
+
+        selected_key = keys[idx]
+        overrides = prompt_manager.get_config_overrides(selected_key)
+
+        return (
+            selected_key,
+            prompt_manager.get_system_message(selected_key),
+            overrides.get("max_tokens", 512),
+            overrides.get("temperature", 0.2),
+        )
+    except (ValueError, KeyError) as e:
+        print(f"[ERROR] Invalid choice: {e}")
+        return None
+
+
+def run_test_no_context():
+    """Run direct API test (no system context) - cost benchmark."""
+    print("\n" + "=" * 70)
+    print("Running Test: Direct API (No Context)")
+    print("=" * 70)
+    try:
+        from test_claude_direct import test_direct_api
+        test_direct_api()
+    except Exception as e:
+        print(f"[ERROR] Test failed: {e}")
+
+
+def run_test_python_context():
+    """Run API test with Python Expert context - cost benchmark."""
+    print("\n" + "=" * 70)
+    print("Running Test: API with Python Expert Context")
+    print("=" * 70)
+    try:
+        from test_claude_with_context import test_with_python_context
+        test_with_python_context()
+    except Exception as e:
+        print(f"[ERROR] Test failed: {e}")
+
+
+def ask_with_context():
+    """
+    Interactive mode: select a context and ask a question to Claude.
+    """
+    from core.dependency_injection import get_container
+    from core.interfaces import ModelConfig
+
+    context_info = select_context()
+    if context_info is None:
+        return
+
+    context_key, system_message, max_tokens, temperature = context_info
+
+    print(f"\n[INFO] Using context: {context_key.upper()}")
+    print("=" * 60)
+
+    # Get user question
+    question = input("\nEnter your question: ").strip()
+    if not question:
+        print("[ERROR] No question provided.")
+        return
+
+    # Check if Claude API key is configured
+    claude_key = os.getenv("ANTHROPIC_API_KEY")
+    if not claude_key or "your-" in claude_key.lower():
+        print("\n[ERROR] Anthropic API key not configured.")
+        print("Add your ANTHROPIC_API_KEY to the .env file")
+        return
+
+    try:
+        # Get services from DI container
+        container = get_container()
+        factory = container.get_model_factory()
+
+        # Create model with context
+        config = ModelConfig(
+            model_name="claude-3-haiku-20240307",
+            system_message=system_message,
+            max_tokens=max_tokens,
+            temperature=temperature,
+        )
+
+        print("\n[INFO] Generating response...")
+        print("-" * 60)
+
+        claude_model = factory.create_model("anthropic", config)
+        result = claude_model.generate(question, context_key=context_key)
+
+        print(f"\nResponse:\n{result.content}")
+        print("\n" + "=" * 60)
+
+    except Exception as e:
+        print(f"[ERROR] Failed to generate response: {e}")
+
+
 def main():
     """
     Main function demonstrating LangChain with multiple model types.
@@ -725,10 +861,13 @@ def main():
         print("6. Check memory usage")
         print("7. Clean up model memory")
         print("8. View system information")
-        print("9. Exit")
-        
-        choice = input("\nEnter your choice (1-9): ").strip()
-        
+        print("9. Ask with selected development context")
+        print("10. Test API — no context (cost benchmark)")
+        print("11. Test API — Python context (cost benchmark)")
+        print("12. Exit")
+
+        choice = input("\nEnter your choice (1-12): ").strip()
+
         if choice == "1":
             test_local_model()
         elif choice == "2":
@@ -746,15 +885,21 @@ def main():
         elif choice == "8":
             show_system_info()
         elif choice == "9":
+            ask_with_context()
+        elif choice == "10":
+            run_test_no_context()
+        elif choice == "11":
+            run_test_python_context()
+        elif choice == "12":
             print("\nThank you for using the LangChain Model Testing Lab!")
             print("All memory will be freed when you close this application.")
             print("Goodbye!")
             break
         else:
-            print("\n[ERROR] Invalid choice. Please enter a number from 1 to 9.")
+            print("\n[ERROR] Invalid choice. Please enter a number from 1 to 12.")
         
         # Ask if user wants to continue
-        if choice != "9":
+        if choice not in ["9", "10", "11"]:
             continue_choice = input("\nReturn to main menu? (y/n): ").lower()
             if continue_choice != 'y':
                 print("\nExiting. Goodbye!")
