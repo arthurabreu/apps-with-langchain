@@ -8,6 +8,8 @@ from .interfaces import ITokenManager, IUserInteraction
 from .services import ConfigurationManager, ApiKeyValidator, ConsoleUserInteraction, LoggingService
 from .token_utils import TokenManager
 from .models.model_factory import ModelFactory
+from .prompt_manager import PromptManager
+from .cost_tracker import CostTracker
 
 T = TypeVar('T')
 
@@ -24,20 +26,22 @@ class DIContainer:
         """Setup default service registrations."""
         # Configuration
         self.register_singleton(ConfigurationManager, ConfigurationManager)
-        
+
         # Logging (depends on configuration)
         self.register_factory(LoggingService, lambda: LoggingService(self.get(ConfigurationManager)))
-        
+
         # Services
         self.register_singleton(ApiKeyValidator, ApiKeyValidator)
         self.register_singleton(TokenManager, TokenManager)
-        
+        self.register_singleton(PromptManager, PromptManager)
+        self.register_singleton(CostTracker, CostTracker)
+
         # User interaction (depends on logging)
         self.register_factory(
-            ConsoleUserInteraction, 
+            ConsoleUserInteraction,
             lambda: ConsoleUserInteraction(self.get(LoggingService).get_logger("user_interaction"))
         )
-        
+
         # Model factory (depends on multiple services)
         self.register_factory(
             ModelFactory,
@@ -46,7 +50,8 @@ class DIContainer:
                 api_key_validator=self.get(ApiKeyValidator),
                 token_manager=self.get(TokenManager),
                 user_interaction=self.get(ConsoleUserInteraction),
-                logging_service=self.get(LoggingService)
+                logging_service=self.get(LoggingService),
+                cost_tracker=self.get(CostTracker)
             )
         )
     
@@ -106,6 +111,14 @@ class DIContainer:
     def get_logging_service(self) -> LoggingService:
         """Get logging service."""
         return self.get(LoggingService)
+
+    def get_prompt_manager(self) -> PromptManager:
+        """Get prompt manager service."""
+        return self.get(PromptManager)
+
+    def get_cost_tracker(self) -> CostTracker:
+        """Get cost tracker service."""
+        return self.get(CostTracker)
 
 
 # Global container instance

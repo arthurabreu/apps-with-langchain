@@ -4,7 +4,7 @@ Refactored to use dependency injection and proper separation of concerns.
 """
 
 import logging
-from typing import Dict, Any
+from typing import Dict, Any, Optional
 from langchain_anthropic import ChatAnthropic
 
 from ..interfaces import ILanguageModel, ITokenManager, IUserInteraction, ModelConfig, GenerationResult, GenerationStrategy
@@ -21,28 +21,31 @@ _STRATEGIES = {
 
 class ClaudeModel(ILanguageModel):
     """Claude model implementation with dependency injection."""
-    
+
     def __init__(
-        self, 
+        self,
         config: ModelConfig,
         token_manager: ITokenManager,
         user_interaction: IUserInteraction,
-        logger: logging.Logger
+        logger: logging.Logger,
+        cost_tracker: Optional[Any] = None
     ):
         """
         Initialize Claude model with dependencies.
-        
+
         Args:
             config: Model configuration
             token_manager: Token management service
             user_interaction: User interaction service
             logger: Logger instance
+            cost_tracker: Cost tracking service (optional)
         """
         self.token_manager = token_manager
         self.user_interaction = user_interaction
         self.logger = logger
+        self.cost_tracker = cost_tracker
         self._model = None
-        
+
         super().__init__(config)
         self._initialize_model()
     
@@ -86,7 +89,7 @@ class ClaudeModel(ILanguageModel):
 
         Args:
             prompt: Input text prompt
-            **kwargs: Additional generation parameters
+            **kwargs: Additional generation parameters (context_key, skip_prompt)
 
         Returns:
             GenerationResult with content and metadata
@@ -109,14 +112,16 @@ class ClaudeModel(ILanguageModel):
             if not strategy_class:
                 raise GenerationError(f"Unknown generation strategy: {self.config.generation_strategy}")
 
+            context_key = kwargs.get('context_key', 'none')
             strategy = strategy_class(
                 self.token_manager,
                 self.user_interaction,
-                self.logger
+                self.logger,
+                self.cost_tracker
             )
 
             # Generate using the selected strategy
-            result = strategy.generate(self._model, prompt, self.config)
+            result = strategy.generate(self._model, prompt, self.config, context_key)
 
             self.user_interaction.display_info("Generation complete!")
             return result

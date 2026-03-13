@@ -4,7 +4,7 @@ Creates model instances with proper dependency injection.
 """
 
 import logging
-from typing import Dict, Type
+from typing import Dict, Type, Optional, Any
 from ..interfaces import ILanguageModel, ITokenManager, IUserInteraction, ModelConfig, IApiKeyValidator, IModelValidator
 from ..exceptions import UnsupportedProviderError
 from ..services import ConfigurationManager, ApiKeyValidator
@@ -20,23 +20,26 @@ class ModelFactory:
         api_key_validator: IApiKeyValidator,
         token_manager: ITokenManager,
         user_interaction: IUserInteraction,
-        logging_service
+        logging_service,
+        cost_tracker: Optional[Any] = None
     ):
         """
         Initialize the model factory.
-        
+
         Args:
             config_manager: Configuration management service
             api_key_validator: API key validation service
             token_manager: Token management service
             user_interaction: User interaction service
             logging_service: Logging service
+            cost_tracker: Cost tracking service (optional)
         """
         self.config_manager = config_manager
         self.api_key_validator = api_key_validator
         self.token_manager = token_manager
         self.user_interaction = user_interaction
         self.logging_service = logging_service
+        self.cost_tracker = cost_tracker
         self.logger = logging_service.get_logger(__name__)
         
         # Registry of available model classes
@@ -79,12 +82,13 @@ class ModelFactory:
         logger = self.logging_service.get_logger(f"{__name__}.{provider_lower}")
         
         self.logger.info(f"Creating {provider} model: {config.model_name}")
-        
+
         return model_class(
             config=config,
             token_manager=self.token_manager,
             user_interaction=self.user_interaction,
-            logger=logger
+            logger=logger,
+            cost_tracker=self.cost_tracker
         )
     
     def get_available_providers(self) -> list[str]:
