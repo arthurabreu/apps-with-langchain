@@ -16,9 +16,6 @@ pip install -r requirements.txt
 2. **Edite o arquivo .env** e substitua os valores placeholder pelas suas chaves reais:
 
 ```env
-# OpenAI API Key (required for OpenAI models)
-OPENAI_API_KEY=sua-chave-openai-aqui
-
 # Google API Keys (for Google services)
 GOOGLE_API_KEY=sua-chave-google-aqui
 GOOGLE_CSE_ID=seu-google-cse-id-aqui
@@ -63,18 +60,18 @@ import os
 load_dotenv()
 
 # Acessa as variáveis
-api_key = os.getenv("OPENAI_API_KEY")
+hf_key = os.getenv("HUGGINGFACE_API_KEY")
 ```
 
 ### 2. Uso com LangChain
 
 ```python
-from langchain_openai import ChatOpenAI
+from langchain_anthropic import ChatAnthropic
 
 # A chave é carregada automaticamente do .env
-llm = ChatOpenAI(
-    api_key=os.getenv("OPENAI_API_KEY"),
-    model="gpt-3.5-turbo"
+llm = ChatAnthropic(
+    api_key=os.getenv("ANTHROPIC_API_KEY"),
+    model="claude-3-haiku-20240307"
 )
 ```
 

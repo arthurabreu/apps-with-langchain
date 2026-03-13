@@ -47,12 +47,6 @@ class ModelComparison:
             print(f"[SKIP] Local model not available: {e}")
         
         try:
-            from .openai_model import OpenAIModel
-            models_to_test.append(("OpenAI GPT", OpenAIModel()))
-        except Exception as e:
-            print(f"[SKIP] OpenAI model not available: {e}")
-        
-        try:
             from .claude_model import ClaudeModel
             models_to_test.append(("Anthropic Claude", ClaudeModel()))
         except Exception as e:

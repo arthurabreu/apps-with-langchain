@@ -13,7 +13,6 @@ load_dotenv()
 def print_api_key_status():
     """Display the status of API keys."""
     keys = {
-        "OpenAI": os.getenv("OPENAI_API_KEY"),
         "Hugging Face": os.getenv("HUGGINGFACE_API_KEY"),
         "Anthropic": os.getenv("ANTHROPIC_API_KEY")
     }
@@ -230,65 +229,6 @@ def test_local_model():
         print("Install with: pip install transformers torch langchain-huggingface")
     except Exception as e:
         print(f"[ERROR] Failed to initialize local model: {e}")
-
-def test_openai_model():
-    """Test the OpenAI model with different prompts."""
-    print("[TEST] OpenAI Model Demo")
-    print("-" * 40)
-    
-    # Check if OpenAI API key is configured
-    openai_key = os.getenv("OPENAI_API_KEY")
-    if not openai_key or "your-" in openai_key.lower():
-        print("\n[ERROR] OpenAI API key not configured.")
-        print("Add your OPENAI_API_KEY to the .env file")
-        print("Format: OPENAI_API_KEY=your-actual-key-here")
-        return
-    
-    try:
-        from core.openai_model import OpenAIModel
-        
-        # Initialize OpenAI model
-        openai_model = OpenAIModel()
-        
-        # Test prompts
-        test_prompts = [
-            {
-                "name": "Kotlin Coroutine",
-                "prompt": "Write a Kotlin function that uses coroutines to fetch data from two APIs concurrently. Include error handling and timeouts."
-            },
-            {
-                "name": "Kotlin Palindrome",
-                "prompt": "Write a Kotlin function that checks if a string is a palindrome. Make it case-insensitive and ignore non-alphanumeric characters."
-            },
-            {
-                "name": "Explain Coroutines",
-                "prompt": "Explain Kotlin coroutines to a beginner. Keep it under 150 words."
-            }
-        ]
-        
-        for i, test in enumerate(test_prompts, 1):
-            print(f"\n[{i}/{len(test_prompts)}] Testing: {test['name']}")
-            print(f"Prompt: {test['prompt']}")
-            print("-" * 40)
-            
-            try:
-                response = openai_model.generate(test['prompt'])
-                print(f"Response:\n{response}")
-            except Exception as e:
-                print(f"Error: {e}")
-            
-            if i < len(test_prompts):
-                input("\nPress Enter to continue to next test...")
-        
-        print("\n" + "=" * 40)
-        print("OpenAI Model Testing Complete!")
-        print("=" * 40)
-        
-    except ImportError as e:
-        print(f"[ERROR] Missing dependencies for OpenAI: {e}")
-        print("Install with: pip install langchain-openai")
-    except Exception as e:
-        print(f"[ERROR] Failed to initialize OpenAI model: {e}")
 
 def test_claude_model():
     """Test the Claude model with different prompts."""
@@ -722,7 +662,7 @@ def show_system_info():
         if memory.total < 8 * 1024 * 1024 * 1024:  # Less than 8GB
             print(f"\n⚠️  WARNING: System has less than 8GB RAM.")
             print("   Local models may not work well.")
-            print("   Consider using cloud models (OpenAI/Claude) instead.")
+            print("   Consider using cloud models (Claude) instead.")
     except:
         pass
     
@@ -755,7 +695,7 @@ def main():
     """
     print("LangChain Model Testing Lab")
     print("=" * 60)
-    print("Goal: Test and compare different LLM models (Local, OpenAI, Claude)")
+    print("Goal: Test and compare different LLM models (Local, Claude)")
     print("=" * 60)
     
     # Show API key status
@@ -778,46 +718,43 @@ def main():
         print("=" * 40)
         print("What would you like to do?")
         print("1. Test Local Hugging Face model")
-        print("2. Test OpenAI model")
-        print("3. Test Claude model")
-        print("4. Compare all available models")
-        print("5. Learn about LangChain concepts")
-        print("6. View example code snippets")
-        print("7. Check memory usage")
-        print("8. Clean up model memory")
-        print("9. View system information")
-        print("10. Exit")
+        print("2. Test Claude model")
+        print("3. Compare all available models")
+        print("4. Learn about LangChain concepts")
+        print("5. View example code snippets")
+        print("6. Check memory usage")
+        print("7. Clean up model memory")
+        print("8. View system information")
+        print("9. Exit")
         
-        choice = input("\nEnter your choice (1-10): ").strip()
+        choice = input("\nEnter your choice (1-9): ").strip()
         
         if choice == "1":
             test_local_model()
         elif choice == "2":
-            test_openai_model()
-        elif choice == "3":
             test_claude_model()
-        elif choice == "4":
+        elif choice == "3":
             compare_models()
-        elif choice == "5":
+        elif choice == "4":
             explain_langchain_concepts()
-        elif choice == "6":
+        elif choice == "5":
             show_examples()
-        elif choice == "7":
+        elif choice == "6":
             check_memory_usage()
-        elif choice == "8":
+        elif choice == "7":
             cleanup_model_memory()
-        elif choice == "9":
+        elif choice == "8":
             show_system_info()
-        elif choice == "10":
+        elif choice == "9":
             print("\nThank you for using the LangChain Model Testing Lab!")
             print("All memory will be freed when you close this application.")
             print("Goodbye!")
             break
         else:
-            print("\n[ERROR] Invalid choice. Please enter a number from 1 to 10.")
+            print("\n[ERROR] Invalid choice. Please enter a number from 1 to 9.")
         
         # Ask if user wants to continue
-        if choice != "10":
+        if choice != "9":
             continue_choice = input("\nReturn to main menu? (y/n): ").lower()
             if continue_choice != 'y':
                 print("\nExiting. Goodbye!")

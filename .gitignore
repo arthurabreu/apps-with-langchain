@@ -193,3 +193,4 @@ Thumbs.db
 # Logs
 logs/
 *.log
+*.junie/memory/

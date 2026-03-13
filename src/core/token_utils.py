@@ -1,9 +1,8 @@
 """
-Utility module for token management and tracking using tiktoken.
+Utility module for token management and tracking.
 Helps monitor token usage, costs, and limits for different models.
 """
 
-import tiktoken
 from typing import Dict, List, Optional, Tuple
 from dataclasses import dataclass
 import json
@@ -21,137 +20,32 @@ class TokenUsage:
 
 class TokenManager:
     # Updated prices per 1M tokens (Standard tier, as of 2026-01). Always verify with provider docs.
-    # Source: https://platform.openai.com/docs/pricing
     COST_PER_1M_TOKENS = {
-        # GPT-5 family (newest)
-        "gpt-5.2": {"input": 1.75, "output": 14.00, "description": "Advanced reasoning", "category": "flagship"},
-        "gpt-5.1": {"input": 1.25, "output": 10.00, "description": "Balanced capability", "category": "flagship"},
-        "gpt-5": {"input": 1.25, "output": 10.00, "description": "Core reasoning", "category": "flagship"},
-        "gpt-5-mini": {"input": 0.25, "output": 2.00, "description": "Fast inference", "category": "efficient"},
-        "gpt-5-nano": {"input": 0.05, "output": 0.40, "description": "Ultra-light", "category": "efficient"},
-        "gpt-5.2-pro": {"input": 21.00, "output": 168.00, "description": "Premium advanced", "category": "premium"},
-        "gpt-5-pro": {"input": 15.00, "output": 120.00, "description": "Premium tier", "category": "premium"},
-        
-        # GPT-4.1 family (multimodal)
-        "gpt-4.1": {"input": 2.00, "output": 8.00, "description": "Vision capable", "category": "multimodal"},
-        "gpt-4.1-mini": {"input": 0.40, "output": 1.60, "description": "Fast vision", "category": "multimodal"},
-        "gpt-4.1-nano": {"input": 0.10, "output": 0.40, "description": "Lite vision", "category": "multimodal"},
-        
-        # GPT-4o family (omni)
-        "gpt-4o": {"input": 2.50, "output": 10.00, "description": "Audio-visual", "category": "multimodal"},
-        "gpt-4o-2024-05-13": {"input": 5.00, "output": 15.00, "description": "Legacy omni", "category": "legacy"},
-        "gpt-4o-mini": {"input": 0.15, "output": 0.60, "description": "Lightweight omni", "category": "efficient"},
-        
-        # GPT-4 legacy
-        "gpt-4": {"input": 30.00, "output": 60.00, "description": "Legacy reasoning", "category": "legacy"},
-        "gpt-4-turbo": {"input": 10.00, "output": 30.00, "description": "Legacy turbo", "category": "legacy"},
-        
-        # GPT-3.5 legacy
-        "gpt-3.5-turbo": {"input": 0.50, "output": 1.50, "description": "Budget chat", "category": "legacy"},
-        
-        # O-series reasoning models
-        "o1": {"input": 15.00, "output": 60.00, "description": "Extended reasoning", "category": "reasoning"},
-        "o1-pro": {"input": 150.00, "output": 600.00, "description": "Advanced reasoning", "category": "reasoning"},
-        "o3": {"input": 2.00, "output": 8.00, "description": "Fast reasoning", "category": "reasoning"},
-        "o3-pro": {"input": 20.00, "output": 80.00, "description": "Expert reasoning", "category": "reasoning"},
-        "o3-deep-research": {"input": 10.00, "output": 40.00, "description": "Research analysis", "category": "reasoning"},
-        "o4-mini": {"input": 1.10, "output": 4.40, "description": "Quick decisions", "category": "reasoning"},
-        "o4-mini-deep-research": {"input": 2.00, "output": 8.00, "description": "Deep analysis", "category": "reasoning"},
-        "o3-mini": {"input": 1.10, "output": 4.40, "description": "Compact reasoning", "category": "reasoning"},
-        "o1-mini": {"input": 1.10, "output": 4.40, "description": "Lean reasoning", "category": "reasoning"},
-        
-        # Audio/Visual/Realtime models
-        "gpt-realtime": {"input": 4.00, "output": 16.00, "description": "Real-time audio", "category": "realtime"},
-        "gpt-realtime-mini": {"input": 0.60, "output": 2.40, "description": "Lite realtime", "category": "realtime"},
-        "gpt-4o-realtime-preview": {"input": 5.00, "output": 20.00, "description": "Preview realtime", "category": "realtime"},
-        "gpt-4o-mini-realtime-preview": {"input": 0.60, "output": 2.40, "description": "Mini realtime", "category": "realtime"},
-        "gpt-audio": {"input": 2.50, "output": 10.00, "description": "Speech support", "category": "audio"},
-        "gpt-audio-mini": {"input": 0.60, "output": 2.40, "description": "Speech lite", "category": "audio"},
-        "gpt-4o-audio-preview": {"input": 2.50, "output": 10.00, "description": "Audio preview", "category": "audio"},
-        "gpt-4o-mini-audio-preview": {"input": 0.15, "output": 0.60, "description": "Mini audio", "category": "audio"},
-        
-        # Search & API models
-        "gpt-4o-search-preview": {"input": 2.50, "output": 10.00, "description": "Web search", "category": "search"},
-        "gpt-4o-mini-search-preview": {"input": 0.15, "output": 0.60, "description": "Search lite", "category": "search"},
-        
-        # Computer use
-        "computer-use-preview": {"input": 3.00, "output": 12.00, "description": "Automation control", "category": "special"},
-        
-        # Embeddings (input only)
-        "text-embedding-3-large": {"input": 0.13, "output": 0.0, "description": "Dense embeddings", "category": "embedding"},
-        "text-embedding-3-small": {"input": 0.02, "output": 0.0, "description": "Lite embeddings", "category": "embedding"},
+        # Anthropic Claude family
+        "claude-3-opus-20240229": {"input": 15.00, "output": 75.00, "description": "Most powerful Claude", "category": "flagship"},
+        "claude-3-5-sonnet-20240620": {"input": 3.00, "output": 15.00, "description": "Best balance of speed and intelligence", "category": "balanced"},
+        "claude-3-haiku-20240307": {"input": 0.25, "output": 1.25, "description": "Fastest and most affordable Claude", "category": "efficient"},
     }
     
     # Maximum context windows (tokens). Values are typical defaults; verify per model variant.
     MAX_TOKENS = {
-        "gpt-5.2": 200000,
-        "gpt-5.1": 200000,
-        "gpt-5": 200000,
-        "gpt-5-mini": 128000,
-        "gpt-5-nano": 128000,
-        "gpt-5.2-pro": 200000,
-        "gpt-5-pro": 200000,
-        "gpt-4.1": 128000,
-        "gpt-4.1-mini": 128000,
-        "gpt-4.1-nano": 128000,
-        "gpt-4o": 128000,
-        "gpt-4o-2024-05-13": 128000,
-        "gpt-4o-mini": 128000,
-        "gpt-4": 8192,
-        "gpt-4-turbo": 128000,
-        "gpt-3.5-turbo": 4096,
-        "o1": 128000,
-        "o1-pro": 128000,
-        "o3": 128000,
-        "o3-pro": 128000,
-        "o3-deep-research": 128000,
-        "o4-mini": 128000,
-        "o4-mini-deep-research": 128000,
-        "o3-mini": 128000,
-        "o1-mini": 128000,
-        "gpt-realtime": 128000,
-        "gpt-realtime-mini": 128000,
-        "gpt-4o-realtime-preview": 128000,
-        "gpt-4o-mini-realtime-preview": 128000,
-        "gpt-audio": 128000,
-        "gpt-audio-mini": 128000,
-        "gpt-4o-audio-preview": 128000,
-        "gpt-4o-mini-audio-preview": 128000,
-        "gpt-4o-search-preview": 128000,
-        "gpt-4o-mini-search-preview": 128000,
-        "computer-use-preview": 128000,
-        "text-embedding-3-large": 8192,
-        "text-embedding-3-small": 8192,
+        "claude-3-opus-20240229": 200000,
+        "claude-3-5-sonnet-20240620": 200000,
+        "claude-3-haiku-20240307": 200000,
     }
 
     # Common aliases mapped to canonical names with descriptions
     MODEL_ALIASES = {
-        "gpt5.2": {"model": "gpt-5.2", "description": "Advanced reasoning"},
-        "gpt5.1": {"model": "gpt-5.1", "description": "Balanced capability"},
-        "gpt5": {"model": "gpt-5", "description": "Core reasoning"},
-        "gpt5-mini": {"model": "gpt-5-mini", "description": "Fast inference"},
-        "gpt5-nano": {"model": "gpt-5-nano", "description": "Ultra-light"},
-        "gpt4.1": {"model": "gpt-4.1", "description": "Vision capable"},
-        "gpt4.1-mini": {"model": "gpt-4.1-mini", "description": "Fast vision"},
-        "gpt4o": {"model": "gpt-4o", "description": "Audio-visual"},
-        "gpt4o-mini": {"model": "gpt-4o-mini", "description": "Lightweight omni"},
-        "gpt4": {"model": "gpt-4", "description": "Legacy reasoning"},
-        "gpt35": {"model": "gpt-3.5-turbo", "description": "Budget chat"},
-        "gpt-3.5": {"model": "gpt-3.5-turbo", "description": "Budget chat"},
-        "o1": {"model": "o1", "description": "Extended reasoning"},
-        "o3": {"model": "o3", "description": "Fast reasoning"},
-        "o3-pro": {"model": "o3-pro", "description": "Expert reasoning"},
-        "embedding-3-large": {"model": "text-embedding-3-large", "description": "Dense embeddings"},
-        "embedding-3-small": {"model": "text-embedding-3-small", "description": "Lite embeddings"},
+        "claude-3-opus": {"model": "claude-3-opus-20240229", "description": "Most powerful Claude"},
+        "claude-3-5-sonnet": {"model": "claude-3-5-sonnet-20240620", "description": "Best balance of speed and intelligence"},
+        "claude-3-haiku": {"model": "claude-3-haiku-20240307", "description": "Fastest and most affordable Claude"},
     }
     
     # Best coding models (for different use cases)
     BEST_CODING_MODELS = {
-        "general-purpose": "gpt-4o",
-        "fast-coding": "gpt-4o-mini",
-        "advanced-logic": "o3",
-        "deep-reasoning": "o1",
-        "budget-coding": "gpt-3.5-turbo",
+        "general-purpose": "claude-3-5-sonnet-20240620",
+        "fast-coding": "claude-3-haiku-20240307",
+        "advanced-logic": "claude-3-opus-20240229",
     }
 
     def __init__(self, log_file: str = "token_usage.json"):
@@ -166,41 +60,19 @@ class TokenManager:
             return cls.MODEL_ALIASES[model]["model"]
         return model
 
-    def count_tokens(self, text: str, model: str = "gpt-3.5-turbo") -> int:
+    def count_tokens(self, text: str, model: str = "claude-3-haiku-20240307") -> int:
         """Count tokens in a text string for a specific model"""
         if not isinstance(text, str):
             print(f"Warning: Expected string but got {type(text)}. Converting to string.")
             text = str(text) if text is not None else ""
 
         try:
-            # Map newer models to their encoding base models
-            model_to_encoding = {
-                "gpt-4": "cl100k_base",
-                "gpt-3.5-turbo": "cl100k_base",
-                "gpt-4-turbo": "cl100k_base",
-                "text-embedding-ada-002": "cl100k_base",
-            }
-            
-            try:
-                # Try getting encoding for the exact model
-                encoding = tiktoken.encoding_for_model(model)
-            except KeyError:
-                # If that fails, use the base encoding for the model family
-                base_encoding = model_to_encoding.get(model.split('-')[0], "cl100k_base")
-                print(f"Using base encoding {base_encoding} for model {model}")
-                encoding = tiktoken.get_encoding(base_encoding)
-            
-            return len(encoding.encode(text))
+            # For Claude models, a rough estimation is often used if the exact tokenizer isn't available
+            # Claude's tokenizer is roughly 1 token per 4 characters for English text
+            return int(len(text) / 4)
         except Exception as e:
             print(f"Error counting tokens for model '{model}': {e}")
-            # Fallback to cl100k_base encoding
-            try:
-                print("Falling back to cl100k_base encoding")
-                encoding = tiktoken.get_encoding("cl100k_base")
-                return len(encoding.encode(text))
-            except Exception as e2:
-                print(f"Fallback encoding failed: {e2}")
-                return len(text.split()) * 4  # Very rough estimation
+            return len(text.split()) * 4  # Very rough estimation
 
     def estimate_cost(self, num_tokens: int, model: str, is_output: bool = False) -> float:
         """Estimate cost for token usage"""
@@ -212,23 +84,17 @@ class TokenManager:
         rate = self.COST_PER_1M_TOKENS[model][rate_type]
         return (num_tokens / 1_000_000) * rate
 
-    def get_token_breakdown(self, text: str, model: str = "gpt-4o-mini") -> Dict:
+    def get_token_breakdown(self, text: str, model: str = "claude-3-haiku-20240307") -> Dict:
         """Get detailed breakdown of token usage"""
         model = self.resolve_model(model)
-        try:
-            encoding = tiktoken.encoding_for_model(model)
-        except Exception:
-            encoding = tiktoken.get_encoding("o200k_base")
-        tokens = encoding.encode(text)
+        tokens_count = self.count_tokens(text, model)
         
         return {
-            "total_tokens": len(tokens),
+            "total_tokens": tokens_count,
             "total_chars": len(text),
-            "tokens_per_char": len(tokens) / len(text) if text else 0,
-            "first_tokens": [(token, encoding.decode([token])) for token in tokens[:10]],
-            "estimated_cost": self.estimate_cost(len(tokens), model),
+            "tokens_per_char": tokens_count / len(text) if text else 0,
+            "estimated_cost": self.estimate_cost(tokens_count, model),
             "model": model,
-            "encoding": encoding.name
         }
 
     def check_context_window(self, text: str, model: str) -> Tuple[int, int, float]:
@@ -257,7 +123,7 @@ class TokenManager:
 
     def get_coding_model(self, use_case: str = "general-purpose") -> str:
         """Get the best coding model for a specific use case"""
-        return self.BEST_CODING_MODELS.get(use_case, "gpt-4o")
+        return self.BEST_CODING_MODELS.get(use_case, "claude-3-5-sonnet-20240620")
     
     def list_all_models(self) -> List[str]:
         """List all available models"""
@@ -360,7 +226,7 @@ def main():
     """
 
     # Analyze token usage for different models
-    models = ["gpt-4o-mini", "gpt-4o", "gpt-4.1"]
+    models = ["claude-3-haiku-20240307", "claude-3-5-sonnet-20240620"]
     
     print("\n=== Token Analysis Examples ===")
     for model in models:
@@ -379,13 +245,6 @@ def main():
         
         # Log this usage
         token_manager.log_usage(model, tokens_used, "analysis", is_output=False)
-
-    # Embeddings example
-    embed_text = "This is a sentence we want to embed."
-    embed_tokens = token_manager.count_tokens(embed_text, "text-embedding-3-small")
-    embed_cost = token_manager.estimate_cost(embed_tokens, "text-embedding-3-small", is_output=False)
-    print("\n[Embeddings] tokens used:", embed_tokens, "estimated cost: $", f"{embed_cost:.6f}")
-    token_manager.log_usage("text-embedding-3-small", embed_tokens, "embedding", is_output=False)
 
     # Get usage summary
     print("\n=== Usage Summary ===")
@@ -406,7 +265,7 @@ def main():
     
     # Compare models for coding
     print("\n=== Model Comparison (1000 tokens) ===")
-    coding_models = ["gpt-4o", "gpt-4o-mini", "gpt-4.1", "o3", "o1"]
+    coding_models = ["claude-3-5-sonnet-20240620", "claude-3-haiku-20240307", "claude-3-opus-20240229"]
     comparison = token_manager.compare_models(coding_models, tokens_count=1000)
     for model, costs in comparison.items():
         print(f"\n{model}:")
