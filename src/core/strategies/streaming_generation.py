@@ -4,7 +4,6 @@ Handles streaming text generation for real-time output.
 """
 
 from typing import Any
-from langchain_core.prompts import ChatPromptTemplate
 
 from ..interfaces import IGenerationStrategy, ModelConfig, GenerationResult, GenerationStrategy
 from ..exceptions import GenerationError
@@ -58,13 +57,13 @@ class StreamingGenerationStrategy:
             self.user_interaction.display_info(f"- Estimated input cost: ${est_cost:.6f}")
             self.user_interaction.display_info("- Starting stream...")
 
-            # Create prompt template
-            prompt_template = ChatPromptTemplate.from_messages([
-                ("system", system_msg),
-                ("user", "{input}")
-            ])
+            # Create messages directly to avoid template variable substitution issues
+            from langchain_core.messages import SystemMessage, HumanMessage
 
-            formatted_prompt = prompt_template.format_messages(input=prompt)
+            messages = [
+                SystemMessage(content=system_msg),
+                HumanMessage(content=prompt)
+            ]
 
             # Stream the response
             response_chunks = []
@@ -72,14 +71,14 @@ class StreamingGenerationStrategy:
 
             try:
                 # Try streaming if supported
-                for chunk in model.stream(formatted_prompt):
+                for chunk in model.stream(messages):
                     if hasattr(chunk, 'content') and chunk.content:
                         print(chunk.content, end="", flush=True)
                         response_chunks.append(chunk.content)
             except AttributeError:
                 # Fallback to regular generation if streaming not supported
                 self.user_interaction.display_warning("Streaming not supported, falling back to standard generation")
-                response = model.invoke(formatted_prompt)
+                response = model.invoke(messages)
                 response_text = response.content
                 print(response_text)
                 response_chunks = [response_text]

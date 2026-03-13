@@ -8,6 +8,8 @@ from dataclasses import dataclass
 import json
 from datetime import datetime
 import os
+from .services import get_brazil_time
+from .config import PRICING, DEFAULT_MODEL, TOKEN_USAGE_LOG, MAX_TOKENS_PER_MODEL
 
 @dataclass
 class TokenUsage:
@@ -19,20 +21,9 @@ class TokenUsage:
     operation_type: str  # e.g., "chat", "completion", "embedding"
 
 class TokenManager:
-    # Updated prices per 1M tokens (Standard tier, as of 2026-01). Always verify with provider docs.
-    COST_PER_1M_TOKENS = {
-        # Anthropic Claude family
-        "claude-3-opus-20240229": {"input": 15.00, "output": 75.00, "description": "Most powerful Claude", "category": "flagship"},
-        "claude-3-5-sonnet-20240620": {"input": 3.00, "output": 15.00, "description": "Best balance of speed and intelligence", "category": "balanced"},
-        "claude-3-haiku-20240307": {"input": 0.25, "output": 1.25, "description": "Fastest and most affordable Claude", "category": "efficient"},
-    }
-    
-    # Maximum context windows (tokens). Values are typical defaults; verify per model variant.
-    MAX_TOKENS = {
-        "claude-3-opus-20240229": 200000,
-        "claude-3-5-sonnet-20240620": 200000,
-        "claude-3-haiku-20240307": 200000,
-    }
+    # Reference to global pricing and token limits from config
+    COST_PER_1M_TOKENS = PRICING
+    MAX_TOKENS = MAX_TOKENS_PER_MODEL
 
     # Common aliases mapped to canonical names with descriptions
     MODEL_ALIASES = {
@@ -48,8 +39,10 @@ class TokenManager:
         "advanced-logic": "claude-3-opus-20240229",
     }
 
-    def __init__(self, log_file: str = "token_usage.json"):
+    def __init__(self, log_file: str = None):
         """Initialize TokenManager with optional log file path"""
+        if log_file is None:
+            log_file = TOKEN_USAGE_LOG
         self.log_file = log_file
         self.usage_history: List[TokenUsage] = self._load_usage_history()
 
@@ -60,8 +53,10 @@ class TokenManager:
             return cls.MODEL_ALIASES[model]["model"]
         return model
 
-    def count_tokens(self, text: str, model: str = "claude-3-haiku-20240307") -> int:
+    def count_tokens(self, text: str, model: str = None) -> int:
         """Count tokens in a text string for a specific model"""
+        if model is None:
+            model = DEFAULT_MODEL
         if not isinstance(text, str):
             print(f"Warning: Expected string but got {type(text)}. Converting to string.")
             text = str(text) if text is not None else ""
@@ -84,8 +79,10 @@ class TokenManager:
         rate = self.COST_PER_1M_TOKENS[model][rate_type]
         return (num_tokens / 1_000_000) * rate
 
-    def get_token_breakdown(self, text: str, model: str = "claude-3-haiku-20240307") -> Dict:
+    def get_token_breakdown(self, text: str, model: str = None) -> Dict:
         """Get detailed breakdown of token usage"""
+        if model is None:
+            model = DEFAULT_MODEL
         model = self.resolve_model(model)
         tokens_count = self.count_tokens(text, model)
         
@@ -112,7 +109,7 @@ class TokenManager:
         model_resolved = self.resolve_model(model)
         cost = self.estimate_cost(tokens_used, model_resolved, is_output=is_output)
         usage = TokenUsage(
-            timestamp=datetime.now().isoformat(),
+            timestamp=get_brazil_time().isoformat(),
             model=model_resolved,
             tokens_used=tokens_used,
             estimated_cost=cost,

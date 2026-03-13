@@ -255,13 +255,13 @@ prompts:
               retriever = self.vector_store.as_retriever(search_kwargs={"k": 5})
 
               prompt = ChatPromptTemplate.from_template(
-                  "Use the context to answer: {context}\n\nQuestion: {question}"
+                  "Use the context to answer: {{context}}\n\nQuestion: {{question}}"
               )
 
               chain = prompt | self.llm
 
               # Stream responses
-              async for chunk in chain.astream({"context": "", "question": question}):
+              async for chunk in chain.astream({{"context": "", "question": question}}):
                   yield chunk.content
 
       async def main():

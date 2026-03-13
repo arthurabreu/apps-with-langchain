@@ -6,6 +6,10 @@ Focused on testing local Hugging Face models with LangChain.
 import os
 import sys
 from dotenv import load_dotenv
+from core.config import (
+    DEFAULT_MODEL, DEFAULT_MAX_TOKENS, DEFAULT_TEMPERATURE,
+    INTERACTIVE_MAX_TOKENS, RESPONSES_DIR
+)
 
 # Add project root to path so we can import test files
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -413,15 +417,16 @@ def compare_models():
         # Ask if user wants to save results
         save_choice = input("\nWould you like to save the comparison results? (y/n): ").lower()
         if save_choice == 'y':
-            from datetime import datetime
+            from core.services import get_brazil_time
             import json
-            
-            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+
+            brazil_time = get_brazil_time()
+            timestamp = brazil_time.strftime("%Y%m%d_%H%M%S")
             filename = f"comparison_results_{timestamp}.json"
-            
+
             # Prepare results
             results = {
-                "timestamp": datetime.now().isoformat(),
+                "timestamp": brazil_time.isoformat(),
                 "models_compared": available_models,
                 "prompts": test_prompts,
                 "results": comparison.results
@@ -776,6 +781,8 @@ def ask_with_context():
     """
     from core.dependency_injection import get_container
     from core.interfaces import ModelConfig
+    from core.services import get_brazil_time
+    from pathlib import Path
 
     context_info = select_context()
     if context_info is None:
@@ -806,7 +813,7 @@ def ask_with_context():
 
         # Create model with context
         config = ModelConfig(
-            model_name="claude-3-haiku-20240307",
+            model_name=DEFAULT_MODEL,
             system_message=system_message,
             max_tokens=max_tokens,
             temperature=temperature,
@@ -820,6 +827,27 @@ def ask_with_context():
 
         print(f"\nResponse:\n{result.content}")
         print("\n" + "=" * 60)
+
+        # Save response to file
+        responses_dir = Path(RESPONSES_DIR)
+        responses_dir.mkdir(exist_ok=True)
+
+        brazil_time = get_brazil_time()
+        timestamp = brazil_time.strftime("%Y%m%d_%H%M%S")
+        filename = f"{context_key}_{timestamp}.md"
+        filepath = responses_dir / filename
+
+        with open(filepath, "w") as f:
+            f.write(f"# Question: {question}\n\n")
+            f.write(f"**Context:** {context_key}\n\n")
+            f.write(f"**Date:** {brazil_time.strftime('%Y-%m-%d %H:%M:%S')}\n\n")
+            f.write(f"## Response\n\n{result.content}\n\n")
+            f.write(f"## Metadata\n\n")
+            f.write(f"- Input tokens: {result.metadata.get('prompt_tokens', 'N/A')}\n")
+            f.write(f"- Output tokens: {result.metadata.get('response_tokens', 'N/A')}\n")
+            f.write(f"- Total cost: ${result.cost:.6f}\n")
+
+        print(f"[INFO] Response saved to: {filepath}")
 
     except Exception as e:
         print(f"[ERROR] Failed to generate response: {e}")

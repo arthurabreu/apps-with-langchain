@@ -5,6 +5,7 @@ Module for comparing different models.
 import os
 from typing import List, Dict, Any
 from datetime import datetime
+from .services import get_brazil_time
 
 class ModelComparison:
     """
@@ -72,19 +73,19 @@ class ModelComparison:
                     start_time = datetime.now()
                     response = model.generate(prompt_info['prompt'])
                     end_time = datetime.now()
-                    
+
                     duration = (end_time - start_time).total_seconds()
-                    
+
                     print(f"Time: {duration:.2f}s")
                     print(f"Response (first 200 chars):\n{response[:200]}...")
-                    
+
                     # Store results
                     self.results.append({
                         "model": model_name,
                         "prompt": prompt_info['name'],
                         "duration": duration,
                         "response_length": len(response),
-                        "timestamp": datetime.now().isoformat()
+                        "timestamp": get_brazil_time().isoformat()
                     })
                     
                 except Exception as e:
