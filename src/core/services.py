@@ -6,8 +6,20 @@ Contains concrete implementations of interfaces for dependency injection.
 import os
 import logging
 from typing import Dict, Any
+from datetime import datetime
+from zoneinfo import ZoneInfo
 from .interfaces import IApiKeyValidator, IUserInteraction
 from .exceptions import ApiKeyError
+
+
+def get_brazil_time() -> datetime:
+    """
+    Get current time in Brazil timezone (America/Sao_Paulo).
+
+    Returns:
+        datetime: Current time in Brazil timezone
+    """
+    return datetime.now(ZoneInfo("America/Sao_Paulo"))
 
 
 class ApiKeyValidator:

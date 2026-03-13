@@ -8,6 +8,7 @@ from typing import Dict, Type, Optional, Any
 from ..interfaces import ILanguageModel, ITokenManager, IUserInteraction, ModelConfig, IApiKeyValidator, IModelValidator
 from ..exceptions import UnsupportedProviderError
 from ..services import ConfigurationManager, ApiKeyValidator
+from ..config import DEFAULT_MODEL, DEFAULT_TEMPERATURE, DEFAULT_MAX_TOKENS
 from .claude_model import ClaudeModel
 
 
@@ -106,11 +107,13 @@ class ModelFactory:
         self._model_registry[provider.lower()] = model_class
         self.logger.info(f"Registered model provider: {provider}")
     
-    def create_default_claude_model(self, model_name: str = "claude-3-haiku-20240307") -> ILanguageModel:
+    def create_default_claude_model(self, model_name: str = None) -> ILanguageModel:
         """Create a default Claude model with standard configuration."""
+        if model_name is None:
+            model_name = DEFAULT_MODEL
         config = ModelConfig(
             model_name=model_name,
-            temperature=0.2,
-            max_tokens=512
+            temperature=DEFAULT_TEMPERATURE,
+            max_tokens=DEFAULT_MAX_TOKENS
         )
         return self.create_model("anthropic", config)

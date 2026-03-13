@@ -4,28 +4,25 @@ Records all API calls to data/costs.json with real token counts and pricing.
 """
 
 import json
-from datetime import datetime, timezone
+from datetime import datetime
 from pathlib import Path
 from typing import Optional
+from .services import get_brazil_time
+from .config import PRICING, COSTS_LOG
 
 
 class CostTracker:
     """Service for tracking and logging API costs."""
 
-    # Pricing table (input/output per 1M tokens)
-    PRICING = {
-        "claude-3-haiku-20240307": {"input": 0.25, "output": 1.25},
-        "claude-haiku-4-5-20251001": {"input": 0.80, "output": 4.00},
-        "claude-sonnet-4-6": {"input": 3.00, "output": 15.00},
-    }
-
-    def __init__(self, costs_file: str = "data/costs.json"):
+    def __init__(self, costs_file: str = None):
         """
         Initialize the cost tracker.
 
         Args:
             costs_file: Path to the JSON file storing cost logs
         """
+        if costs_file is None:
+            costs_file = COSTS_LOG
         self.costs_file = Path(costs_file)
         self._ensure_costs_file()
 
@@ -49,7 +46,7 @@ class CostTracker:
         """
         # Fallback for unknown models
         model_key = model
-        if model_key not in self.PRICING:
+        if model_key not in PRICING:
             # Try fuzzy match on Haiku
             if "haiku" in model.lower():
                 model_key = "claude-haiku-4-5-20251001"
@@ -59,7 +56,7 @@ class CostTracker:
                 # Default to Haiku pricing
                 model_key = "claude-haiku-4-5-20251001"
 
-        pricing_entry = self.PRICING[model_key]
+        pricing_entry = PRICING[model_key]
         key = "output" if is_output else "input"
         # Pricing is per 1M tokens, so convert to per-token
         return pricing_entry[key] / 1_000_000
@@ -91,7 +88,7 @@ class CostTracker:
 
         # Create log entry
         entry = {
-            "timestamp": datetime.now(timezone.utc).isoformat(),
+            "timestamp": get_brazil_time().isoformat(),
             "model": model,
             "context": context,
             "input_tokens": input_tokens,

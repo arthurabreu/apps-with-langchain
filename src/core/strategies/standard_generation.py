@@ -4,7 +4,6 @@ Handles synchronous text generation with token tracking and user interaction.
 """
 
 from typing import Any
-from langchain_core.prompts import ChatPromptTemplate
 
 from ..interfaces import IGenerationStrategy, ModelConfig, GenerationResult, GenerationStrategy
 from ..exceptions import GenerationError
@@ -57,21 +56,22 @@ class StandardGenerationStrategy:
             self.user_interaction.display_info(f"- Input tokens: {prompt_tokens}")
             self.user_interaction.display_info(f"- Estimated input cost: ${est_cost:.6f}")
 
-            # Create prompt template and generate
-            prompt_template = ChatPromptTemplate.from_messages([
-                ("system", system_msg),
-                ("user", "{input}")
-            ])
+            # Create messages directly to avoid template variable substitution issues
+            from langchain_core.messages import SystemMessage, HumanMessage
 
-            formatted_prompt = prompt_template.format_messages(input=prompt)
-            response = model.invoke(formatted_prompt)
+            messages = [
+                SystemMessage(content=system_msg),
+                HumanMessage(content=prompt)
+            ]
+            response = model.invoke(messages)
             response_text = response.content
 
             # Try to get real API token counts from response metadata
             real_usage = getattr(response, "usage_metadata", None)
             if real_usage:
-                api_input_tokens = real_usage.get("input_tokens", prompt_tokens)
-                api_output_tokens = real_usage.get("output_tokens", self.token_manager.count_tokens(response_text, config.model_name))
+                # Handle both dict and object attributes
+                api_input_tokens = real_usage.get("input_tokens", prompt_tokens) if isinstance(real_usage, dict) else getattr(real_usage, "input_tokens", prompt_tokens)
+                api_output_tokens = real_usage.get("output_tokens", self.token_manager.count_tokens(response_text, config.model_name)) if isinstance(real_usage, dict) else getattr(real_usage, "output_tokens", self.token_manager.count_tokens(response_text, config.model_name))
             else:
                 api_input_tokens = prompt_tokens
                 api_output_tokens = self.token_manager.count_tokens(response_text, config.model_name)
@@ -117,8 +117,10 @@ class StandardGenerationStrategy:
             )
 
         except Exception as e:
+            import traceback
             error_msg = f"Standard generation failed: {e}"
             self.logger.error(error_msg)
+            self.logger.error(f"Full traceback: {traceback.format_exc()}")
             raise GenerationError(error_msg)
     
     def supports_model(self, provider: str) -> bool:
