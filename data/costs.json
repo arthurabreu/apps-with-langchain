@@ -1,0 +1,26 @@
+[
+  {
+    "timestamp": "2026-03-13T21:19:41.314515+00:00",
+    "model": "claude-3-haiku-20240307",
+    "context": "none",
+    "input_tokens": 79,
+    "output_tokens": 1228,
+    "input_cost": 2e-05,
+    "output_cost": 0.001535,
+    "total_cost": 0.001555,
+    "source": "api_script",
+    "prompt_preview": "Write a production-ready Python async function that:\n- Fetches data from 3 APIs concurrently using h"
+  },
+  {
+    "timestamp": "2026-03-13T21:20:31.765103+00:00",
+    "model": "claude-3-haiku-20240307",
+    "context": "python",
+    "input_tokens": 1862,
+    "output_tokens": 2000,
+    "input_cost": 0.000465,
+    "output_cost": 0.0025,
+    "total_cost": 0.002966,
+    "source": "api_script",
+    "prompt_preview": "Write a production-ready Python async function that:\n- Fetches data from 3 APIs concurrently using h"
+  }
+]

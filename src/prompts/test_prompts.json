@@ -1,0 +1,7 @@
+{
+  "comparison_prompt": {
+    "id": "async_python_comparison",
+    "description": "Tests async Python, Pydantic v2, error handling — good for cost comparison",
+    "text": "Write a production-ready Python async function that:\n- Fetches data from 3 APIs concurrently using httpx\n- Implements retry logic with exponential backoff\n- Returns structured results using Pydantic v2\n- Includes comprehensive error handling\n\nInclude type hints, docstrings, and explain trade-offs."
+  }
+}

@@ -1,0 +1,193 @@
+Here's a production-ready Python async function that fetches data from 3 APIs concurrently using `httpx`, implements retry logic with exponential backoff, returns structured results using Pydantic v2, and includes comprehensive error handling:
+
+```python
+import asyncio
+import httpx
+import random
+import time
+from dataclasses import dataclass
+from datetime import datetime, timedelta
+from typing import Annotated, AsyncGenerator, Optional
+from pydantic import BaseModel, Field, validator
+
+class ApiResponse(BaseModel):
+    """Pydantic model to represent the API response data."""
+    id: int
+    name: str
+    created_at: datetime
+
+@dataclass
+class ApiConfig:
+    """Configuration for each API endpoint."""
+    url: str
+    max_retries: int = 3
+    retry_delay_base: float = 1.0
+    retry_delay_factor: float = 2.0
+
+async def fetch_from_api(
+    config: ApiConfig,
+    session: httpx.AsyncClient
+) -> ApiResponse:
+    """Fetch data from a single API endpoint with retry logic."""
+    num_retries = 0
+    delay = config.retry_delay_base
+
+    while num_retries < config.max_retries:
+        try:
+            async with session.get(config.url) as resp:
+                resp.raise_for_status()
+                data = await resp.json()
+                return ApiResponse(**data)
+        except (httpx.HTTPError, ValueError) as e:
+            num_retries += 1
+            delay *= config.retry_delay_factor
+            jitter = random.uniform(0, 1)
+            await asyncio.sleep(delay + jitter)
+            print(f"Retrying API call ({num_retries}/{config.max_retries}): {e}")
+        else:
+            break
+    else:
+        raise Exception(f"Failed to fetch data from {config.url} after {config.max_retries} retries")
+
+async def fetch_all_data(
+    configs: list[ApiConfig],
+    timeout: Optional[float] = None
+) -> AsyncGenerator[ApiResponse, None]:
+    """Fetch data from multiple APIs concurrently with retry logic."""
+    async with httpx.AsyncClient() as session:
+        tasks = [
+            asyncio.create_task(fetch_from_api(config, session))
+            for config in configs
+        ]
+
+        try:
+            async with asyncio.timeout(timeout):
+                for task in asyncio.as_completed(tasks):
+                    yield await task
+        except asyncio.TimeoutError:
+            print("Timeout reached, cancelling tasks...")
+            for task in tasks:
+                task.cancel()
+            raise
+
+# Usage example
+async def main():
+    configs = [
+        ApiConfig(url="https://api.example.com/data/1"),
+        ApiConfig(url="https://api.example.com/data/2"),
+        ApiConfig(url="https://api.example.com/data/3"),
+    ]
+
+    start_time = time.time()
+    async for response in fetch_all_data(configs, timeout=10.0):
+        print(response.json())
+    end_time = time.time()
+
+    print(f"Total time: {end_time - start_time:.2f} seconds")
+
+if __name__ == "__main__":
+    asyncio.run(main())
+```
+
+## Thinking Process
+
+1. **Analyze**: The requirement is to fetch data from 3 API endpoints concurrently, with retry logic and structured results. This is an I/O-bound task, so `asyncio` is the appropriate choice.
+2. **Architect**: The `fetch_from_api` function handles the logic for fetching data from a single API endpoint with retry logic. The `fetch_all_data` function orchestrates the concurrent fetching of data from multiple APIs, with a configurable timeout. The `ApiResponse` Pydantic model is used to structure the API response data.
+3. **Optimize**: Type hints are used extensively, and the code is structured for testability. The `fetch_from_api` function uses a `while` loop with exponential backoff and jitter to implement the retry logic. The `fetch_all_data` function uses `asyncio.as_completed` to process the results as they become available, and a configurable timeout to prevent the function from hanging indefinitely.
+4. **Refine**: The code includes comprehensive error handling, logging, and a usage example in the `main` function. The `ApiConfig` dataclass encapsulates the configuration for each API endpoint, making it easy to add or modify endpoints.
+
+## Code
+
+```python
+import asyncio
+import httpx
+import random
+import time
+from dataclasses import dataclass
+from datetime import datetime, timedelta
+from typing import Annotated, AsyncGenerator, Optional
+from pydantic import BaseModel, Field, validator
+
+class ApiResponse(BaseModel):
+    """Pydantic model to represent the API response data."""
+    id: int
+    name: str
+    created_at: datetime
+
+@dataclass
+class ApiConfig:
+    """Configuration for each API endpoint."""
+    url: str
+    max_retries: int = 3
+    retry_delay_base: float = 1.0
+    retry_delay_factor: float = 2.0
+
+async def fetch_from_api(
+    config: ApiConfig,
+    session: httpx.AsyncClient
+) -> ApiResponse:
+    """Fetch data from a single API endpoint with retry logic."""
+    num_retries = 0
+    delay = config.retry_delay_base
+
+    while num_retries < config.max_retries:
+        try:
+            async with session.get(config.url) as resp:
+                resp.raise_for_status()
+                data = await resp.json()
+                return ApiResponse(**data)
+        except (httpx.HTTPError, ValueError) as e:
+            num_retries += 1
+            delay *= config.retry_delay_factor
+            jitter = random.uniform(0, 1)
+            await asyncio.sleep(delay + jitter)
+            print(f"Retrying API call ({num_retries}/{config.max_retries}): {e}")
+        else:
+            break
+    else:
+        raise Exception(f"Failed to fetch data from {config.url} after {config.max_retries} retries")
+
+async def fetch_all_data(
+    configs: list[ApiConfig],
+    timeout: Optional[float] = None
+) -> AsyncGenerator[ApiResponse, None]:
+    """Fetch data from multiple APIs concurrently with retry logic."""
+    async with httpx.AsyncClient() as session:
+        tasks = [
+            asyncio.create_task(fetch_from_api(config, session))
+            for config in configs
+        ]
+
+        try:
+            async with asyncio.timeout(timeout):
+                for task in asyncio.as_completed(tasks):
+                    yield await task
+        except asyncio.TimeoutError:
+            print("Timeout reached, cancelling tasks...")
+            for task in tasks:
+                task.cancel()
+            raise
+
+# Usage example
+async def main():
+    configs = [
+        ApiConfig(url="https://api.example.com/data/1"),
+        ApiConfig(url="https://api.example.com/data/2"),
+        ApiConfig(url="https://api.example.com/data/3"),
+    ]
+
+    start_time = time.time()
+    async for response in fetch_all_data(configs, timeout=10.0):
+        print(response.json())
+    end_time = time.time()
+
+    print(f"Total time: {end_time - start_time:.2f} seconds")
+
+if __name__ == "__main__":
+    asyncio.run(main())
+```
+
+## Caveats
+
+1. **Async Gotchas**: The `fetch_all_data` function uses a configurable timeout to prevent the function from hanging indefinitely. However, there is a potential race condition where the tasks may not be cancelled immediately, leading to resource leaks. To mitigate this, you can use a more robust approach, such as `asyncio.wait_for` or `asyncio.wait` with `return_when=asyncio.FIRST_EXCEPTION`.
+2. **Type Hints Limitations**: The `AsyncGenerator` type hint is used to indicate that the `fetch_all_data` function returns an async generator. However, this type hint does not provide any
