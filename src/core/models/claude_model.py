@@ -6,10 +6,17 @@ Refactored to use dependency injection and proper separation of concerns.
 import logging
 from typing import Dict, Any
 from langchain_anthropic import ChatAnthropic
-from langchain_core.prompts import ChatPromptTemplate
 
-from ..interfaces import ILanguageModel, ITokenManager, IUserInteraction, ModelConfig, GenerationResult
+from ..interfaces import ILanguageModel, ITokenManager, IUserInteraction, ModelConfig, GenerationResult, GenerationStrategy
 from ..exceptions import ModelConfigurationError, ApiKeyError, GenerationError
+from ..strategies.standard_generation import StandardGenerationStrategy
+from ..strategies.streaming_generation import StreamingGenerationStrategy
+
+
+_STRATEGIES = {
+    GenerationStrategy.STANDARD: StandardGenerationStrategy,
+    GenerationStrategy.STREAMING: StreamingGenerationStrategy,
+}
 
 
 class ClaudeModel(ILanguageModel):
@@ -76,14 +83,14 @@ class ClaudeModel(ILanguageModel):
     def generate(self, prompt: str, **kwargs) -> GenerationResult:
         """
         Generate text from a prompt.
-        
+
         Args:
             prompt: Input text prompt
             **kwargs: Additional generation parameters
-            
+
         Returns:
             GenerationResult with content and metadata
-            
+
         Raises:
             GenerationError: If generation fails
         """
@@ -93,33 +100,27 @@ class ClaudeModel(ILanguageModel):
             if not skip_prompt and not self.user_interaction.prompt_continue():
                 self.user_interaction.display_info("Generation skipped by user.")
                 return GenerationResult(content="Generation skipped by user.")
-            
+
             self.user_interaction.display_info(f"Prompt: {prompt[:100]}...")
             self.user_interaction.display_info("Generating using Claude...")
-            
-            # Use the appropriate generation strategy
-            from ..strategies.standard_generation import StandardGenerationStrategy
-            from ..strategies.streaming_generation import StreamingGenerationStrategy
-            
-            if self.config.generation_strategy.value == "streaming":
-                strategy = StreamingGenerationStrategy(
-                    self.token_manager, 
-                    self.user_interaction, 
-                    self.logger
-                )
-            else:
-                strategy = StandardGenerationStrategy(
-                    self.token_manager, 
-                    self.user_interaction, 
-                    self.logger
-                )
-            
+
+            # Resolve strategy from registry
+            strategy_class = _STRATEGIES.get(self.config.generation_strategy)
+            if not strategy_class:
+                raise GenerationError(f"Unknown generation strategy: {self.config.generation_strategy}")
+
+            strategy = strategy_class(
+                self.token_manager,
+                self.user_interaction,
+                self.logger
+            )
+
             # Generate using the selected strategy
             result = strategy.generate(self._model, prompt, self.config)
-            
+
             self.user_interaction.display_info("Generation complete!")
             return result
-            
+
         except Exception as e:
             error_msg = f"Generation failed: {e}"
             self.logger.error(error_msg)

@@ -120,5 +120,5 @@ class StreamingGenerationStrategy:
     def supports_model(self, provider: str) -> bool:
         """Check if this strategy supports the given provider."""
         # Most modern providers support streaming
-        supported_providers = ["openai", "anthropic"]
+        supported_providers = ["anthropic"]
         return provider.lower() in supported_providers

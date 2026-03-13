@@ -40,7 +40,7 @@ from .models import ModelFactory
 from .token_utils import TokenManager
 
 # Backward compatibility utilities
-from .utils import prompt_continue, create_openai_model, create_claude_model
+from .utils import prompt_continue, create_claude_model
 
 __all__ = [
     # Interfaces
@@ -72,6 +72,5 @@ __all__ = [
     
     # Utilities
     'prompt_continue',
-    'create_openai_model',
     'create_claude_model'
 ]

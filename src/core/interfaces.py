@@ -14,7 +14,6 @@ class GenerationStrategy(Enum):
     """Strategies for text generation."""
     STANDARD = "standard"
     STREAMING = "streaming"
-    BATCH = "batch"
 
 
 @dataclass

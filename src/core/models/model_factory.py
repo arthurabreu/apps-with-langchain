@@ -5,20 +5,19 @@ Creates model instances with proper dependency injection.
 
 import logging
 from typing import Dict, Type
-from ..interfaces import ILanguageModel, ITokenManager, IUserInteraction, ModelConfig
+from ..interfaces import ILanguageModel, ITokenManager, IUserInteraction, ModelConfig, IApiKeyValidator, IModelValidator
 from ..exceptions import UnsupportedProviderError
 from ..services import ConfigurationManager, ApiKeyValidator
-from .openai_model import OpenAIModel
 from .claude_model import ClaudeModel
 
 
 class ModelFactory:
     """Factory for creating language model instances."""
-    
+
     def __init__(
         self,
         config_manager: ConfigurationManager,
-        api_key_validator: ApiKeyValidator,
+        api_key_validator: IApiKeyValidator,
         token_manager: ITokenManager,
         user_interaction: IUserInteraction,
         logging_service
@@ -42,7 +41,6 @@ class ModelFactory:
         
         # Registry of available model classes
         self._model_registry: Dict[str, Type[ILanguageModel]] = {
-            "openai": OpenAIModel,
             "anthropic": ClaudeModel,
         }
     
@@ -103,15 +101,6 @@ class ModelFactory:
         """
         self._model_registry[provider.lower()] = model_class
         self.logger.info(f"Registered model provider: {provider}")
-    
-    def create_default_openai_model(self, model_name: str = "gpt-3.5-turbo") -> ILanguageModel:
-        """Create a default OpenAI model with standard configuration."""
-        config = ModelConfig(
-            model_name=model_name,
-            temperature=0.2,
-            max_tokens=512
-        )
-        return self.create_model("openai", config)
     
     def create_default_claude_model(self, model_name: str = "claude-3-haiku-20240307") -> ILanguageModel:
         """Create a default Claude model with standard configuration."""

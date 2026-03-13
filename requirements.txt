@@ -1,22 +1,21 @@
 # Core packages (2026 versions)
-langchain>=2.0.0               # Major version bump expected
-langchain-community>=1.0.0     # Stable community package
-langchain-core>=1.0.0         # Core stabilized
+langchain>=0.2.0               # Major version bump expected
+langchain-community>=0.2.0     # Stable community package
+langchain-core>=0.2.0         # Core stabilized
 langchain-cli>=0.2.0          # New CLI tool for project management
 
 # LLM Integration
-langchain-openai>=1.0.0       # OpenAI integration
-openai>=2.0.0                 # Major OpenAI SDK update
-langchain-anthropic>=1.0.0    # Anthropic/Claude integration
-anthropic>=2.0.0              # Major Anthropic SDK update
-langchain-gemini>=1.0.0       # Google Gemini integration
-google-cloud-aiplatform>=5.0.0
+langchain-anthropic>=0.1.0    # Anthropic/Claude integration
+anthropic>=0.20.0              # Major Anthropic SDK update
+langchain-huggingface>=0.1.0   # HuggingFace integration
 
 # Environment and configuration
-python-dotenv>=2.0.0      # Environment management
-pydantic>=3.0.0          # Data validation
-typing-extensions>=5.0.0  # Enhanced typing support
+python-dotenv>=1.0.0      # Environment management
+pydantic>=2.0.0          # Data validation
+typing-extensions>=4.0.0  # Enhanced typing support
 
-# Token management and utilities
-tiktoken>=1.0.0           # Token counting for various LLMs
-tokenizers>=1.0.0         # Hugging Face tokenizers
+# Deep learning and local models
+torch>=2.0.0               # PyTorch for local model inference
+transformers>=4.30.0       # HuggingFace transformers for local models
+accelerate>=0.20.0         # Distributed inference support
+psutil>=5.9.0              # System resource monitoring
