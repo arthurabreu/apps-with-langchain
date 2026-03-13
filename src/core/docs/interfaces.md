@@ -1,5 +1,7 @@
 # interfaces.py
 
+**📍 Reading Order:** #2 of 10 core docs | [← Back to Index](index.md) | [Next: exceptions.md →](exceptions.md)
+
 > Defines abstract contracts (ABC, Protocol) and data classes for the entire application.
 
 ## What This File Does
@@ -303,3 +305,9 @@ def register_model(provider: str, model_class: type) -> None: ...
 6. main.py never touches interfaces directly—talks to DI container instead
 
 **Key insight:** If you're adding a new interface (e.g., `INewFeature`), add it here, then implement it in services.py or models/, then register it in dependency_injection.py.
+
+---
+
+**[← Previous](index.md) | [Back to Index](index.md) | [Next →](exceptions.md)**
+
+*Read next: exceptions.md — understand the error hierarchy*

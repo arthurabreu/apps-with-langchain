@@ -1,5 +1,7 @@
 # token_utils.md
 
+**📍 Optional reference** | [← Back to Index](index.md) | Read when: implementing token tracking features
+
 > Token counting, cost estimation, and usage tracking for LLM operations. Monitors consumption and budget.
 
 ## What This File Does
@@ -421,3 +423,9 @@ def list_all_models(self) -> List[str]:
 5. At end of session, user can call `token_manager.get_usage_summary()` to see costs
 
 **Key insight:** This file is **optional** for basic functionality but crucial for cost control in production. All token tracking is voluntary; if you don't call the log methods, nothing gets recorded.
+
+---
+
+**[← Back to Index](index.md) | [Back to core learning path →](strategies/streaming_generation.md)**
+
+*Reference doc: explore when you need to understand token management*

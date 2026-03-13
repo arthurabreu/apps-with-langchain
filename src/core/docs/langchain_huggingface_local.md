@@ -1,5 +1,7 @@
 # langchain_huggingface_local.py
 
+**📍 Optional reference (experimental)** | [← Back to Index](index.md) | Read when: exploring local model support
+
 > Educational module for running local Hugging Face models with LangChain. Demonstrates device detection, model loading, and memory management.
 
 ## What This File Does
@@ -365,3 +367,9 @@ spinner.start("Loading...")
 spinner.stop("[SUCCESS] Done!")
 # Spinner runs in background, doesn't block main thread
 ```
+
+---
+
+**[← Back to Index](index.md) | [Back to core learning path →](strategies/streaming_generation.md)**
+
+*Reference doc: explore when you want to add local model support*

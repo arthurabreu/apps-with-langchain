@@ -1,5 +1,7 @@
 # utils.py
 
+**📍 Reading Order:** #6 of 10 core docs | [← Back to Index](index.md) | [Next: models/model_factory.md →](models/model_factory.md)
+
 > Convenience functions that delegate to the DI container. Provides backward compatibility and a simpler interface.
 
 ## What This File Does
@@ -182,3 +184,9 @@ model = factory.create_model("anthropic", config)
 ```
 
 Both work; the second is more explicit and easier to test.
+
+---
+
+**[← Previous](services.md) | [Back to Index](index.md) | [Next →](models/model_factory.md)**
+
+*Read next: models/model_factory.md — understand how models are created*

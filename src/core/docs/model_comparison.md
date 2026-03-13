@@ -1,5 +1,7 @@
 # model_comparison.py
 
+**📍 Optional reference** | [← Back to Index](index.md) | Read when: benchmarking models
+
 > Utilities for comparing different language models side-by-side on the same prompts. Measures performance, latency, and quality.
 
 ## What This File Does
@@ -270,3 +272,9 @@ for ... :
     })
 # Later, iterate and aggregate
 ```
+
+---
+
+**[← Back to Index](index.md) | [Back to core learning path →](strategies/streaming_generation.md)**
+
+*Reference doc: explore when you need to compare model performance*

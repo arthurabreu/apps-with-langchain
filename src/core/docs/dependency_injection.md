@@ -1,5 +1,7 @@
 # dependency_injection.md
 
+**📍 Reading Order:** #4 of 10 core docs | [← Back to Index](index.md) | [Next: services.md →](services.md)
+
 > Manual dependency injection container for service creation and wiring. No Hilt/Dagger—just a dictionary-based registry.
 
 ## What This File Does
@@ -278,3 +280,9 @@ These save typing and hide implementation details from callers.
 - Modify `_services` or `_singletons` directly (use register methods)
 - Rely on service creation order in `_setup_default_services()` without updating dependencies
 - Register the same service twice without resetting first
+
+---
+
+**[← Previous](exceptions.md) | [Back to Index](index.md) | [Next →](services.md)**
+
+*Read next: services.md — understand concrete implementations*

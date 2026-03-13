@@ -1,5 +1,7 @@
 # strategies/streaming_generation.md
 
+**📍 Reading Order:** #10 of 10 core docs | [← Back to Index](../index.md) | [Optional next: token_utils.md →](../token_utils.md)
+
 > Streaming text generation strategy. Outputs chunks in real-time, showing response as it arrives. Feels fast and interactive.
 
 ## What This File Does
@@ -422,3 +424,33 @@ Stream Complete:
 ```
 
 User sees the response building in real-time as the model generates it.
+
+---
+
+**[← Previous](standard_generation.md) | [Back to Index](../index.md)**
+
+---
+
+## 🎉 You've Completed the Core Learning Path!
+
+**Congratulations!** You've read all 10 core docs and understand:
+- ✅ Contracts & interfaces
+- ✅ Exception hierarchy
+- ✅ Dependency injection
+- ✅ Service implementations
+- ✅ Model creation (factory pattern)
+- ✅ Model implementation
+- ✅ Generation strategies (sync & async)
+
+**Next steps:**
+- 📚 **Optional reference docs** (explore as needed):
+  - [token_utils.md](../token_utils.md) — for token tracking
+  - [langchain_huggingface_local.md](../langchain_huggingface_local.md) — for local models
+  - [model_comparison.md](../model_comparison.md) — for benchmarking
+
+- 💻 **Apply what you learned:**
+  - Open `src/main.py` and trace how it uses the DI container
+  - Look at the actual source files alongside these docs
+  - Try modifying a strategy or adding a new service
+
+- 🔗 **Go back to index:** [← Back to Index](../index.md)

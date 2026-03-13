@@ -1,5 +1,7 @@
 # strategies/standard_generation.md
 
+**📍 Reading Order:** #9 of 10 core docs | [← Back to Index](../index.md) | [Next: streaming_generation.md →](streaming_generation.md)
+
 > Synchronous text generation strategy. Waits for full response before returning. Simple, reliable, predictable.
 
 ## What This File Does
@@ -298,6 +300,12 @@ Each operation type ("standard_prompt", "standard_response") is logged separatel
 - Long code generation (user wants to see early progress)
 - Chat interface (user expects instant feedback)
 - Real-time interaction (need to show chunks as they arrive)
+
+---
+
+**[← Previous](../models/claude_model.md) | [Back to Index](../index.md) | [Next →](streaming_generation.md)**
+
+*Read next: streaming_generation.md — understand streaming generation (final core doc)*
 
 ---
 
