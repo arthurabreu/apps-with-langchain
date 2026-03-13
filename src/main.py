@@ -5,10 +5,6 @@ Focused on testing local Hugging Face models with LangChain.
 
 import os
 import sys
-import gc
-import json
-import platform
-from datetime import datetime
 from dotenv import load_dotenv
 
 # Load environment variables from .env file
@@ -33,7 +29,8 @@ def check_memory_usage():
     """Check current memory usage."""
     try:
         import psutil
-
+        import os
+        
         process = psutil.Process(os.getpid())
         mem_info = process.memory_info()
         
@@ -99,10 +96,11 @@ def cleanup_model_memory():
     print("\n" + "=" * 40)
     print("Cleaning Up Model Memory")
     print("=" * 40)
-
+    
     print("\n[INFO] This will attempt to free up memory used by loaded models.")
-
+    
     try:
+        import gc
         import torch
         
         # Get initial memory
@@ -309,7 +307,18 @@ def compare_models():
             available_models.append("Local Hugging Face")
         except:
             print("[INFO] Local model not available (missing dependencies)")
-
+        
+        # Check OpenAI
+        openai_key = os.getenv("OPENAI_API_KEY")
+        if openai_key and "your-" not in openai_key.lower():
+            try:
+                from core.openai_model import OpenAIModel
+                available_models.append("OpenAI GPT")
+            except:
+                print("[INFO] OpenAI model not available (missing dependencies)")
+        else:
+            print("[INFO] OpenAI API key not configured")
+        
         # Check Claude
         claude_key = os.getenv("ANTHROPIC_API_KEY")
         if claude_key and "your-" not in claude_key.lower():
@@ -333,6 +342,8 @@ def compare_models():
                 if choice == 'y':
                     if "Local" in available_models[0]:
                         test_local_model()
+                    elif "OpenAI" in available_models[0]:
+                        test_openai_model()
                     elif "Claude" in available_models[0]:
                         test_claude_model()
             return
@@ -390,6 +401,9 @@ def compare_models():
         # Ask if user wants to save results
         save_choice = input("\nWould you like to save the comparison results? (y/n): ").lower()
         if save_choice == 'y':
+            from datetime import datetime
+            import json
+            
             timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
             filename = f"comparison_results_{timestamp}.json"
             
@@ -408,7 +422,7 @@ def compare_models():
         
     except ImportError as e:
         print(f"[ERROR] Missing dependencies: {e}")
-        print("Install required packages: pip install langchain-anthropic")
+        print("Install required packages: pip install langchain-openai langchain-anthropic")
     except Exception as e:
         print(f"[ERROR] Comparison failed: {e}")
 
@@ -417,6 +431,7 @@ def explain_langchain_concepts():
     concepts = {
         "LLM Wrappers": """
 LangChain provides wrappers for different LLM providers:
+- ChatOpenAI: For OpenAI models (GPT-3.5, GPT-4, etc.)
 - ChatAnthropic: For Claude models (Claude-3, etc.)
 - HuggingFacePipeline: For local Hugging Face models
 - HuggingFaceEndpoint: For Hugging Face Inference API
@@ -537,6 +552,21 @@ response = model.generate(
 # Clean up when done
 model.cleanup()
 """,
+        "OpenAI Model": """
+from core.openai_model import OpenAIModel
+
+# Initialize with GPT-4
+model = OpenAIModel(
+    model_name="gpt-4",
+    temperature=0.7,
+    max_tokens=1024
+)
+
+# Generate with custom prompt
+response = model.generate(
+    "Explain Kotlin coroutines with examples"
+)
+""",
         "Claude Model": """
 from core.claude_model import ClaudeModel
 
@@ -608,7 +638,9 @@ def show_system_info():
     print("\n" + "=" * 60)
     print("System Information & Requirements")
     print("=" * 60)
-
+    
+    import platform
+    
     print(f"\nSystem: {platform.system()} {platform.release()}")
     print(f"Python: {platform.python_version()}")
     
