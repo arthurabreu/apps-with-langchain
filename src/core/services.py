@@ -16,35 +16,33 @@ class ApiKeyValidator:
     def validate_key(self, api_key: str, provider: str) -> bool:
         """
         Validate an API key for a specific provider.
-        
+
         Args:
             api_key: The API key to validate
-            provider: The provider name (openai, anthropic, etc.)
-            
+            provider: The provider name (anthropic, huggingface, etc.)
+
         Returns:
             True if key appears valid, False otherwise
-            
+
         Raises:
             ApiKeyError: If key is missing or obviously invalid
         """
         if not api_key:
             raise ApiKeyError(f"API key not provided for {provider}")
-        
+
         # Check for placeholder values
-        placeholder_indicators = ["your-", "sk-", "placeholder", "example", "test"]
+        placeholder_indicators = ["your-", "placeholder", "example", "test"]
         if any(indicator in api_key.lower() for indicator in placeholder_indicators):
-            if not api_key.startswith(("sk-", "claude-", "hf_")):  # Allow valid prefixes
+            if not api_key.startswith(("claude-", "hf_")):  # Allow valid prefixes
                 raise ApiKeyError(f"API key appears to be a placeholder for {provider}")
-        
+
         # Basic format validation
-        if provider.lower() == "openai" and not api_key.startswith("sk-"):
-            raise ApiKeyError("OpenAI API key should start with 'sk-'")
-        elif provider.lower() == "anthropic" and len(api_key) < 20:
+        if provider.lower() == "anthropic" and len(api_key) < 20:
             raise ApiKeyError("Anthropic API key appears too short")
         elif provider.lower() == "huggingface" and not api_key.startswith("hf_"):
             # HuggingFace keys are optional for some models
             logging.warning("HuggingFace API key doesn't start with 'hf_' - may be invalid")
-        
+
         return True
 
 
@@ -126,10 +124,8 @@ class ConfigurationManager:
     def _load_from_env(self) -> None:
         """Load configuration from environment variables."""
         self._config = {
-            "openai_api_key": os.getenv("OPENAI_API_KEY"),
             "anthropic_api_key": os.getenv("ANTHROPIC_API_KEY"),
             "huggingface_api_key": os.getenv("HUGGINGFACE_API_KEY"),
-            "google_api_key": os.getenv("GOOGLE_API_KEY"),
             "environment": os.getenv("ENVIRONMENT", "development"),
             "log_level": os.getenv("LOG_LEVEL", "INFO"),
         }
@@ -145,16 +141,14 @@ class ConfigurationManager:
     def get_api_key(self, provider: str) -> str:
         """Get API key for a specific provider."""
         key_map = {
-            "openai": "openai_api_key",
             "anthropic": "anthropic_api_key",
             "huggingface": "huggingface_api_key",
-            "google": "google_api_key",
         }
-        
+
         config_key = key_map.get(provider.lower())
         if not config_key:
             raise ValueError(f"Unknown provider: {provider}")
-        
+
         return self.get(config_key)
 
 

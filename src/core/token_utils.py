@@ -72,7 +72,7 @@ class TokenManager:
             return int(len(text) / 4)
         except Exception as e:
             print(f"Error counting tokens for model '{model}': {e}")
-            return len(text.split()) * 4  # Very rough estimation
+            return int(len(text) // 4)  # Fallback: consistent character-based estimate
 
     def estimate_cost(self, num_tokens: int, model: str, is_output: bool = False) -> float:
         """Estimate cost for token usage"""
@@ -214,8 +214,8 @@ class TokenManager:
         except Exception as e:
             print(f"Error saving usage history: {e}")
 
-# Example usage
 def main():
+    """Example usage of TokenManager."""
     # Initialize token manager
     token_manager = TokenManager()
 
@@ -227,22 +227,22 @@ def main():
 
     # Analyze token usage for different models
     models = ["claude-3-haiku-20240307", "claude-3-5-sonnet-20240620"]
-    
+
     print("\n=== Token Analysis Examples ===")
     for model in models:
         print(f"\nAnalyzing for {model}:")
-        
+
         # Get token breakdown
         breakdown = token_manager.get_token_breakdown(example_text, model)
         tokens_used = breakdown['total_tokens']
         print(f"Tokens used: {tokens_used}")
         print(f"Estimated input cost: ${breakdown['estimated_cost']:.6f}")
-        
+
         # Check context window
         tokens, remaining, usage_percent = token_manager.check_context_window(example_text, model)
         print(f"Context window remaining: {remaining} tokens")
         print(f"Usage: {usage_percent:.3f}%")
-        
+
         # Log this usage
         token_manager.log_usage(model, tokens_used, "analysis", is_output=False)
 
@@ -251,18 +251,18 @@ def main():
     summary = token_manager.get_usage_summary()
     print(f"Total tokens used: {summary['total_tokens']}")
     print(f"Total cost: ${summary['total_cost']:.6f}")
-    
+
     print("\nUsage by model:")
     for model, usage in summary['usage_by_model'].items():
         tokens_used = usage['tokens']
         print(f"{model}: tokens used {tokens_used} (${usage['cost']:.6f})")
-    
+
     # Show best coding models
     print("\n=== Best Coding Models ===")
     for use_case, model in token_manager.BEST_CODING_MODELS.items():
         info = token_manager.get_model_info(model)
         print(f"{use_case}: {model} ({info['description']})")
-    
+
     # Compare models for coding
     print("\n=== Model Comparison (1000 tokens) ===")
     coding_models = ["claude-3-5-sonnet-20240620", "claude-3-haiku-20240307", "claude-3-opus-20240229"]
@@ -273,6 +273,7 @@ def main():
         print(f"  Output cost: ${costs['output_cost']:.6f}")
         print(f"  Total: ${costs['total_estimated']:.6f}")
         print(f"  Description: {costs['description']}")
+
 
 if __name__ == "__main__":
     main()

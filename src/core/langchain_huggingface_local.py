@@ -9,8 +9,33 @@ import threading
 import time
 import sys
 from transformers import AutoTokenizer, AutoModelForCausalLM, pipeline
-from langchain_huggingface import HuggingFacePipeline, ChatHuggingFace
-from typing import Optional, Dict, Any
+from typing import Optional, Dict, Any, Tuple
+
+
+def _select_device() -> Tuple[str, torch.dtype]:
+    """
+    Detect and select the best available device for model inference.
+
+    Returns:
+        Tuple of (device_name, dtype)
+        - device_name: "cuda", "mps", or "cpu"
+        - dtype: torch.float16 for accelerated devices, torch.float32 for CPU
+    """
+    if torch.cuda.is_available():
+        device = "cuda"
+        dtype = torch.float16
+        print(f"[INFO] CUDA detected: Using GPU acceleration (device: {device}, dtype: {dtype})")
+    elif torch.backends.mps.is_available():
+        device = "mps"
+        dtype = torch.float16
+        print(f"[INFO] MPS detected: Using Apple Silicon acceleration (device: {device}, dtype: {dtype})")
+    else:
+        device = "cpu"
+        dtype = torch.float32
+        print(f"[INFO] No GPU detected: Using CPU (device: {device}, dtype: {dtype})")
+
+    return device, dtype
+
 
 class LoadingSpinner:
     """Display a loading spinner animation."""
@@ -89,39 +114,59 @@ class LocalHuggingFaceModel:
         """Initialize the model, tokenizer, and pipeline."""
         if self._pipeline is not None:
             return self._pipeline
-        
+
         spinner = LoadingSpinner()
-        
+
         try:
             # Step 1: Load tokenizer
             print("[STEP 1] Loading tokenizer...")
             spinner.start("[LOADING] Loading tokenizer")
-            
+
             self._tokenizer = AutoTokenizer.from_pretrained(
                 self.model_id,
                 token=os.getenv("HUGGINGFACE_API_KEY")
             )
-            
+
             spinner.stop("[SUCCESS] Tokenizer loaded")
-            
+
             # Ensure we have a padding token
             if self._tokenizer.pad_token is None:
                 self._tokenizer.pad_token = self._tokenizer.eos_token
-            
+
             # Step 2: Load model
             print("\n[STEP 2] Loading model...")
             print("[INFO] This may take a moment, especially for large models...")
-            
+
+            # Select device and dtype
+            device, dtype = _select_device()
+
             # Note: The transformers library will show its own progress bar
             # for loading checkpoint shards, so we don't need our spinner here
-            dtype = torch.float16 if torch.cuda.is_available() else torch.float32
-            
-            self._model = AutoModelForCausalLM.from_pretrained(
-                self.model_id,
-                torch_dtype=dtype,
-                device_map=self.device,
-                token=os.getenv("HUGGINGFACE_API_KEY")
-            )
+
+            # Load model with device-specific configuration
+            if device == "cuda":
+                # For CUDA: use device_map="auto" to distribute across available GPUs
+                self._model = AutoModelForCausalLM.from_pretrained(
+                    self.model_id,
+                    torch_dtype=dtype,
+                    device_map="auto",
+                    token=os.getenv("HUGGINGFACE_API_KEY")
+                )
+            elif device == "mps":
+                # For MPS: don't use device_map, load normally then move to device
+                self._model = AutoModelForCausalLM.from_pretrained(
+                    self.model_id,
+                    torch_dtype=dtype,
+                    token=os.getenv("HUGGINGFACE_API_KEY")
+                )
+                self._model = self._model.to(device)
+            else:
+                # For CPU: load normally without device_map
+                self._model = AutoModelForCausalLM.from_pretrained(
+                    self.model_id,
+                    torch_dtype=dtype,
+                    token=os.getenv("HUGGINGFACE_API_KEY")
+                )
             
             # Wait a moment to let the transformers progress bar finish
             time.sleep(0.5)
@@ -257,32 +302,33 @@ class LocalHuggingFaceModel:
         This is useful when you're done with the model but want to keep running other code.
         """
         print("\n[INFO] Cleaning up model resources...")
-        
+
         # Clear pipeline
         if self._pipeline is not None:
             del self._pipeline
             self._pipeline = None
-        
+
         # Clear model
         if self._model is not None:
             del self._model
             self._model = None
-        
+
         # Clear tokenizer
         if self._tokenizer is not None:
             del self._tokenizer
             self._tokenizer = None
-        
+
         # Force garbage collection
         import gc
         gc.collect()
-        
-        # Clear PyTorch CUDA cache if using GPU
-        import torch
+
+        # Clear device-specific caches
         if torch.cuda.is_available():
             torch.cuda.empty_cache()
             torch.cuda.ipc_collect()
-        
+        elif torch.backends.mps.is_available():
+            torch.mps.empty_cache()
+
         print("[SUCCESS] Model resources cleaned up!")
     
     def __enter__(self):
@@ -308,90 +354,16 @@ class LocalHuggingFaceModel:
     
     def test_connection(self) -> bool:
         """Test if the model can generate a simple response."""
-        spinner = LoadingSpinner()
-        
         try:
             test_prompt = "Say 'Hello, World!' in Kotlin."
             print(f"\n[TEST] Testing model with prompt: '{test_prompt}'")
-            
-            spinner.start("[TESTING] Running test generation")
-            
-            response = self.generate(test_prompt, max_new_tokens=50)
-            
-            spinner.stop("[SUCCESS] Test completed")
-            
+
+            response = self.generate(test_prompt, max_new_tokens=50, skip_prompt=True)
+
             print(f"\n[TEST] Response: {response}")
             return True
-            
+
         except Exception as e:
-            if 'spinner' in locals():
-                spinner.stop("[ERROR] Test failed!")
             print(f"[TEST FAILED] {e}")
             return False
     
-    def generate_with_progress(self, prompt: str, **kwargs) -> str:
-        """
-        Alternative generate method that shows estimated progress.
-        This is useful for longer generations.
-        
-        Args:
-            prompt: Input text prompt
-            **kwargs: Additional generation parameters
-            
-        Returns:
-            Generated text
-        """
-        print(f"\n[PROMPT] {prompt[:100]}{'...' if len(prompt) > 100 else ''}")
-        print("[INFO] Starting generation...")
-        
-        # Show some initial feedback
-        print("[GENERATING] ", end="", flush=True)
-        
-        # Simple dots animation
-        def show_dots():
-            for i in range(10):
-                if i > 0:
-                    print(".", end="", flush=True)
-                time.sleep(0.3)
-            print("")
-        
-        # Start dots animation in background
-        dots_thread = threading.Thread(target=show_dots)
-        dots_thread.daemon = True
-        dots_thread.start()
-        
-        try:
-            if self._pipeline is None:
-                self._initialize_model()
-            
-            # Format the prompt for better results
-            formatted_prompt = self._format_prompt(prompt)
-            
-            # Generate response
-            result = self._pipeline(
-                formatted_prompt,
-                max_new_tokens=kwargs.get('max_new_tokens', self.max_length),
-                temperature=kwargs.get('temperature', self.temperature),
-                do_sample=True,
-                num_return_sequences=1
-            )
-            
-            # Wait for dots animation to finish if it hasn't
-            dots_thread.join(timeout=1.0)
-            
-            print("[SUCCESS] Generation complete!")
-            
-            # Extract the generated text
-            generated_text = result[0]['generated_text']
-            
-            # Remove the input prompt from the response
-            if formatted_prompt in generated_text:
-                response = generated_text[len(formatted_prompt):].strip()
-            else:
-                response = generated_text
-            
-            return response
-            
-        except Exception as e:
-            print(f"\n[ERROR] Generation failed: {e}")
-            return f"Error generating response: {str(e)}"

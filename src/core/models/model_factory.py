@@ -5,7 +5,7 @@ Creates model instances with proper dependency injection.
 
 import logging
 from typing import Dict, Type
-from ..interfaces import ILanguageModel, ITokenManager, IUserInteraction, ModelConfig
+from ..interfaces import ILanguageModel, ITokenManager, IUserInteraction, ModelConfig, IApiKeyValidator, IModelValidator
 from ..exceptions import UnsupportedProviderError
 from ..services import ConfigurationManager, ApiKeyValidator
 from .claude_model import ClaudeModel
@@ -13,11 +13,11 @@ from .claude_model import ClaudeModel
 
 class ModelFactory:
     """Factory for creating language model instances."""
-    
+
     def __init__(
         self,
         config_manager: ConfigurationManager,
-        api_key_validator: ApiKeyValidator,
+        api_key_validator: IApiKeyValidator,
         token_manager: ITokenManager,
         user_interaction: IUserInteraction,
         logging_service
