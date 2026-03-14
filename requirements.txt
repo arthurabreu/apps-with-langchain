@@ -1,13 +1,13 @@
 # Core packages (2026 versions)
-langchain>=0.2.0               # Major version bump expected
-langchain-community>=0.2.0     # Stable community package
-langchain-core>=0.2.0         # Core stabilized
-langchain-cli>=0.2.0          # New CLI tool for project management
+langchain>=0.3.0               # Python 3.14 compatible
+langchain-community>=0.3.0     # Stable community package
+langchain-core>=0.3.0         # Core stabilized, Python 3.14 support
+langchain-cli>=0.3.0          # New CLI tool for project management
 
 # LLM Integration
-langchain-anthropic>=0.1.0    # Anthropic/Claude integration
-anthropic>=0.20.0              # Major Anthropic SDK update
-langchain-huggingface>=0.1.0   # HuggingFace integration
+langchain-anthropic>=0.2.0    # Anthropic/Claude integration, Python 3.14 support
+anthropic>=0.25.0              # Major Anthropic SDK update
+langchain-huggingface>=0.2.0   # HuggingFace integration
 
 # Environment and configuration
 python-dotenv>=1.0.0      # Environment management
