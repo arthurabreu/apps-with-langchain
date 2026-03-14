@@ -3,6 +3,9 @@ Main application file for LangChain project.
 Focused on testing local Hugging Face models with LangChain.
 """
 
+import warnings
+warnings.filterwarnings("ignore", category=UserWarning, module="langchain_core._api.deprecation")
+
 import os
 import sys
 from dotenv import load_dotenv
@@ -853,18 +856,135 @@ def ask_with_context():
         print(f"[ERROR] Failed to generate response: {e}")
 
 
+def run_android_agent():
+    """Launch the Android code-gen agent."""
+    try:
+        from android_agent.cli import main as android_main
+        android_main()
+    except Exception as e:
+        print(f"[ERROR] Failed to launch Android agent: {e}")
+
+
+def model_testing_menu():
+    """Submenu for model testing and evaluation."""
+    while True:
+        print("\n" + "=" * 40)
+        print("🧪 MODEL TESTING & EVALUATION")
+        print("=" * 40)
+        print("1. Test Local Hugging Face model")
+        print("2. Test Claude model")
+        print("3. Compare all available models")
+        print("4. Back to main menu\n")
+
+        choice = input("Enter your choice (1-4): ").strip()
+
+        if choice == "1":
+            print()
+            test_local_model()
+        elif choice == "2":
+            print()
+            test_claude_model()
+        elif choice == "3":
+            print()
+            compare_models()
+        elif choice == "4":
+            break
+        else:
+            print("\n[ERROR] Invalid choice. Please enter a number from 1 to 4.\n")
+
+
+def learning_menu():
+    """Submenu for learning resources and examples."""
+    while True:
+        print("\n" + "=" * 40)
+        print("📖 LEARNING & EXAMPLES")
+        print("=" * 40)
+        print("1. Learn about LangChain concepts")
+        print("2. View example code snippets")
+        print("3. Back to main menu\n")
+
+        choice = input("Enter your choice (1-3): ").strip()
+
+        if choice == "1":
+            print()
+            explain_langchain_concepts()
+        elif choice == "2":
+            print()
+            show_examples()
+        elif choice == "3":
+            break
+        else:
+            print("\n[ERROR] Invalid choice. Please enter a number from 1 to 3.\n")
+
+
+def context_benchmarking_menu():
+    """Submenu for context-based queries and cost benchmarking."""
+    while True:
+        print("\n" + "=" * 40)
+        print("📊 CONTEXT & BENCHMARKING")
+        print("=" * 40)
+        print("1. Ask with selected development context")
+        print("2. Test API — no context (cost benchmark)")
+        print("3. Test API — Python context (cost benchmark)")
+        print("4. Back to main menu\n")
+
+        choice = input("Enter your choice (1-4): ").strip()
+
+        if choice == "1":
+            print()
+            ask_with_context()
+        elif choice == "2":
+            print()
+            run_test_no_context()
+        elif choice == "3":
+            print()
+            run_test_python_context()
+        elif choice == "4":
+            break
+        else:
+            print("\n[ERROR] Invalid choice. Please enter a number from 1 to 4.\n")
+
+
+def system_maintenance_menu():
+    """Submenu for system monitoring and maintenance."""
+    while True:
+        print("\n" + "=" * 40)
+        print("🔧 SYSTEM & MAINTENANCE")
+        print("=" * 40)
+        print("1. Check memory usage")
+        print("2. Clean up model memory")
+        print("3. View system information")
+        print("4. Back to main menu\n")
+
+        choice = input("Enter your choice (1-4): ").strip()
+
+        if choice == "1":
+            print()
+            check_memory_usage()
+        elif choice == "2":
+            print()
+            cleanup_model_memory()
+        elif choice == "3":
+            print()
+            show_system_info()
+        elif choice == "4":
+            break
+        else:
+            print("\n[ERROR] Invalid choice. Please enter a number from 1 to 4.\n")
+
+
 def main():
     """
     Main function demonstrating LangChain with multiple model types.
     """
-    print("LangChain Model Testing Lab")
+    print("\n\nLangChain Model Testing Lab")
     print("=" * 60)
     print("Goal: Test and compare different LLM models (Local, Claude)")
     print("=" * 60)
-    
+
     # Show API key status
     print_api_key_status()
-    
+
     # Show system info on first run
     try:
         import psutil
@@ -874,65 +994,48 @@ def main():
             print("   Consider closing other applications before testing local models.")
     except:
         pass
-    
+
     # Main menu
     while True:
         print("\n" + "=" * 40)
         print("MAIN MENU")
         print("=" * 40)
         print("What would you like to do?")
-        print("1. Test Local Hugging Face model")
-        print("2. Test Claude model")
-        print("3. Compare all available models")
-        print("4. Learn about LangChain concepts")
-        print("5. View example code snippets")
-        print("6. Check memory usage")
-        print("7. Clean up model memory")
-        print("8. View system information")
-        print("9. Ask with selected development context")
-        print("10. Test API — no context (cost benchmark)")
-        print("11. Test API — Python context (cost benchmark)")
-        print("12. Exit")
+        print("\n⭐ FEATURED:")
+        print("1. Android Code-Gen Agent")
+        print("\n📚 TESTING & LEARNING:")
+        print("2. Model Testing & Evaluation")
+        print("3. Learning & Examples")
+        print("\n📊 ADVANCED:")
+        print("4. Context & Benchmarking")
+        print("5. System & Maintenance")
+        print("\n6. Exit\n")
 
-        choice = input("\nEnter your choice (1-12): ").strip()
+        choice = input("Enter your choice (1-6): ").strip()
 
         if choice == "1":
-            test_local_model()
+            print()
+            run_android_agent()
+            print()
         elif choice == "2":
-            test_claude_model()
+            model_testing_menu()
+            print()
         elif choice == "3":
-            compare_models()
+            learning_menu()
+            print()
         elif choice == "4":
-            explain_langchain_concepts()
+            context_benchmarking_menu()
+            print()
         elif choice == "5":
-            show_examples()
+            system_maintenance_menu()
+            print()
         elif choice == "6":
-            check_memory_usage()
-        elif choice == "7":
-            cleanup_model_memory()
-        elif choice == "8":
-            show_system_info()
-        elif choice == "9":
-            ask_with_context()
-        elif choice == "10":
-            run_test_no_context()
-        elif choice == "11":
-            run_test_python_context()
-        elif choice == "12":
             print("\nThank you for using the LangChain Model Testing Lab!")
             print("All memory will be freed when you close this application.")
             print("Goodbye!")
             break
         else:
-            print("\n[ERROR] Invalid choice. Please enter a number from 1 to 12.")
-        
-        # Ask if user wants to continue
-        if choice not in ["9", "10", "11"]:
-            continue_choice = input("\nReturn to main menu? (y/n): ").lower()
-            if continue_choice != 'y':
-                print("\nExiting. Goodbye!")
-                print("[INFO] Remember: Close VS Code to free all memory.")
-                break
+            print("\n[ERROR] Invalid choice. Please enter a number from 1 to 6.\n")
 
 if __name__ == "__main__":
     # Check for required packages

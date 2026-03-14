@@ -22,5 +22,65 @@
     "total_cost": 0.002966,
     "source": "api_script",
     "prompt_preview": "Write a production-ready Python async function that:\n- Fetches data from 3 APIs concurrently using h"
+  },
+  {
+    "timestamp": "2026-03-13T21:09:01.373947-03:00",
+    "model": "claude-3-haiku-20240307",
+    "context": "android",
+    "input_tokens": 2544,
+    "output_tokens": 213,
+    "input_cost": 0.000636,
+    "output_cost": 0.000266,
+    "total_cost": 0.000902,
+    "source": "android_agent",
+    "prompt_preview": "create a claude /init md file in the project folder /Users/mac/StudioProjects/AllThingsAndroid/app/s"
+  },
+  {
+    "timestamp": "2026-03-13T21:26:41.095949-03:00",
+    "model": "claude-3-haiku-20240307",
+    "context": "android",
+    "input_tokens": 23565,
+    "output_tokens": 1461,
+    "input_cost": 0.005891,
+    "output_cost": 0.001826,
+    "total_cost": 0.007718,
+    "source": "android_agent",
+    "prompt_preview": "create a jetpack compose screen with a centered image and a button at the bottom, the click buttton "
+  },
+  {
+    "timestamp": "2026-03-13T21:39:09.762084-03:00",
+    "model": "claude-3-haiku-20240307",
+    "context": "android",
+    "input_tokens": 20666,
+    "output_tokens": 1025,
+    "input_cost": 0.005167,
+    "output_cost": 0.001281,
+    "total_cost": 0.006448,
+    "source": "android_agent",
+    "prompt_preview": "create a simple jetpack compose screen called FakeApiTestScreen in the correct package with a center"
+  },
+  {
+    "timestamp": "2026-03-13T21:42:57.043938-03:00",
+    "model": "claude-3-haiku-20240307",
+    "context": "android",
+    "input_tokens": 132451,
+    "output_tokens": 3957,
+    "input_cost": 0.033113,
+    "output_cost": 0.004946,
+    "total_cost": 0.038059,
+    "source": "android_agent",
+    "prompt_preview": "create a fake api call screen that has an image that uses /Users/mac/StudioProjects/AllThingsAndroid"
+  },
+  {
+    "timestamp": "2026-03-13T22:14:13.832768-03:00",
+    "model": "claude-3-haiku-20240307",
+    "context": "android",
+    "input_tokens": 53765,
+    "output_tokens": 2775,
+    "input_cost": 0.013441,
+    "output_cost": 0.003469,
+    "total_cost": 0.01691,
+    "source": "android_agent",
+    "prompt_preview": "create a screen with a list of fruits that comes from its view model"
   }
 ]
