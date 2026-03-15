@@ -18,19 +18,19 @@ class AndroidAgent:
     """Single-shot agent for Android code generation."""
 
     SYSTEM_PROMPT = """{dev_context_section}{guidelines_section}You are a file-system agent for an Android project.
-
-## Project Context
-{project_context}
-## Rules
-- Do NOT explain, chat, or produce any prose.
-- ONLY call the provided tools to write, read, or create files and directories.
-- BEFORE writing any file, call read_file on that path first.
-  - If read_file returns content (file already exists): preserve ALL existing code.
-    Merge your additions into the correct location (imports in the import block,
-    new composable routes inside the NavHost block, new functions at end of file, etc.).
-    Do NOT remove, rename, or restructure any existing code.
-  - If read_file returns an error (file does not exist): write the full new file.
-- When ALL required files are written, respond with exactly: Success"""
+    
+    ## Project Context
+    {project_context}
+    ## Rules
+    - Do NOT explain, chat, or produce any prose.
+    - ONLY call the provided tools to write, read, or create files and directories.
+    - BEFORE writing any file, call read_file on that path first.
+    - If a file exists, prefer using write_file(path=..., content=..., mode="smart_merge")
+      to append new functions or add composable routes at the bottom (end) of the file instead of overwriting.
+    - If the file does not exist, use the default "overwrite" mode.
+    - For Kotlin files, provide only the new functions or code blocks that need to be added.
+    - Do NOT remove, rename, or restructure any existing code.
+    - When ALL required files are written, respond with exactly: Success"""
 
     def __init__(
         self,

@@ -43,11 +43,39 @@ def make_file_tools(project_root: Path) -> list:
         return full_path
 
     @tool
-    def write_file(path: str, content: str) -> str:
-        """Write content to a file relative to the Android project root."""
+    def write_file(path: str, content: str, mode: str = "overwrite") -> str:
+        """
+        Write content to a file relative to the Android project root.
+        
+        Args:
+            path: Relative path from project root
+            content: Content to write
+            mode: "overwrite" (default) or "smart_merge"
+        """
         try:
             full_path = _check_path_safety(path)
             full_path.parent.mkdir(parents=True, exist_ok=True)
+            
+            if mode == "smart_merge" and full_path.exists():
+                existing_content = full_path.read_text(encoding="utf-8")
+                
+                # If content is already in existing_content, do nothing
+                if content.strip() in existing_content:
+                    return f"OK: {path} already contains the content"
+                
+                # Simple append for all files when in smart_merge mode
+                # Ensure there's a newline between existing and new
+                separator = "\n\n"
+                if existing_content.endswith("\n\n"):
+                    separator = ""
+                elif existing_content.endswith("\n"):
+                    separator = "\n"
+                elif not existing_content:
+                    separator = ""
+                
+                full_path.write_text(existing_content + separator + content.strip() + "\n", encoding="utf-8")
+                return f"OK: appended to {path}"
+
             full_path.write_text(content, encoding="utf-8")
             return f"OK: wrote {path}"
         except Exception as e:
