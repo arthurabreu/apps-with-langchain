@@ -16,6 +16,11 @@ env_path = project_root / ".env"
 if env_path.exists():
     load_dotenv(env_path)
 
+# Set HF_TOKEN from HUGGINGFACE_API_KEY for HuggingFace library compatibility
+hf_key = os.getenv("HUGGINGFACE_API_KEY")
+if hf_key:
+    os.environ["HF_TOKEN"] = hf_key
+
 from .agent import AndroidAgent
 from .provider_factory import _list_model_files
 from .context_engine import ContextEngine
@@ -144,7 +149,7 @@ def main():
     print("🚀 Model Provider:")
     print("=" * 40)
     print("1. Claude API")
-    print("2. Local HuggingFace\n")
+    print("2. Local HuggingFace Model\n")
 
     while True:
         choice = input("Select [1 or 2]: ").strip()
@@ -158,37 +163,22 @@ def main():
             print(f"✓ Selected Claude: {model_name}\n")
             break
         elif choice == "2":
+            # Import HuggingFace model manager
+            from src.core.hf_model_manager import select_hf_model
+
             model_provider = "huggingface"
             print()
-            hf_dir = input("Enter HuggingFace models directory: ").strip()
-            hf_path = Path(hf_dir).expanduser()
 
-            if not hf_path.is_dir():
-                print(f"Error: {hf_path} is not a directory.\n")
+            # Use new interactive model selection with download capability
+            result = select_hf_model()
+
+            if result is None:
+                print("[INFO] Returning to model selection...\n")
                 continue
 
-            models = _list_model_files(hf_path)
-            if not models:
-                print(f"No .gguf or .bin files found in {hf_path}\n")
-                continue
-
-            print("\n📂 Available models:")
-            for i, model in enumerate(models, 1):
-                print(f"  {i}. {model}")
-            print()
-
-            while True:
-                try:
-                    model_idx = int(input("Select model [number]: ").strip()) - 1
-                    if 0 <= model_idx < len(models):
-                        model_path_or_name = str(hf_path / models[model_idx])
-                        print(f"✓ Selected: {models[model_idx]}\n")
-                        break
-                    else:
-                        print("Invalid selection. Try again.\n")
-                except ValueError:
-                    print("Invalid input. Try again.\n")
-
+            model_id, model_folder = result
+            model_path_or_name = str(model_folder)
+            print(f"✓ Selected: {model_id}\n")
             break
         else:
             print("Invalid choice. Enter 1 or 2.\n")

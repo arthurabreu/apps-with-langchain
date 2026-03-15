@@ -1,8 +1,11 @@
 """
 Android code-gen agent orchestrator.
 Single-shot agent using LangChain's new agents API.
+Falls back to text-based generation + file parsing for local HuggingFace models
+that don't support structured tool-calling.
 """
 
+import re
 from pathlib import Path
 from langchain.agents import create_agent
 from langchain_core.messages import BaseMessage
@@ -18,7 +21,7 @@ class AndroidAgent:
     """Single-shot agent for Android code generation."""
 
     SYSTEM_PROMPT = """{dev_context_section}{guidelines_section}You are a file-system agent for an Android project.
-    
+
     ## Project Context
     {project_context}
     ## Rules
@@ -32,6 +35,28 @@ class AndroidAgent:
     - Do NOT remove, rename, or restructure any existing code.
     - When ALL required files are written, respond with exactly: Success"""
 
+    HF_PROMPT = """{dev_context_section}{guidelines_section}You are a code generator for an Android project using Kotlin and Jetpack Compose.
+
+## Project Context
+{project_context}
+
+## Rules
+- Output ONLY code files. No explanations, no prose.
+- For EACH file, use this EXACT format:
+
+FILE: <relative path from project root>
+```kotlin
+<file content>
+```
+
+- Use the correct package name from the project context above.
+- Create complete, compilable Kotlin files.
+- Use Jetpack Compose for UI.
+
+## Task
+{task}
+"""
+
     def __init__(
         self,
         project_root: Path,
@@ -41,17 +66,6 @@ class AndroidAgent:
         max_tokens: int = INTERACTIVE_MAX_TOKENS,
         system_context: str = ""
     ):
-        """
-        Initialize Android agent.
-
-        Args:
-            project_root: Path to Android project
-            model_provider: "claude" or "huggingface"
-            model_path_or_name: Model name or path
-            temperature: Generation temperature
-            max_tokens: Max tokens for response
-            system_context: Optional development context (expertise prompt)
-        """
         self.project_root = Path(project_root)
         self.model_provider = model_provider
         self.model_path_or_name = model_path_or_name
@@ -59,30 +73,8 @@ class AndroidAgent:
         self.max_tokens = max_tokens
         self.system_context = system_context
 
-    def run(self, task: str, claude_md_context: str = "") -> None:
-        """
-        Execute single-shot agent task.
-
-        Args:
-            task: Description of what to generate
-            claude_md_context: Optional CLAUDE.md guidelines content
-        """
-        # 1. Load project context
-        engine = ContextEngine(self.project_root)
-        context = engine.load_context()
-
-        # 2. Create file tools
-        tools = make_file_tools(self.project_root)
-
-        # 3. Build chat model
-        chat_model = get_chat_model(
-            self.model_provider,
-            self.model_path_or_name,
-            self.temperature,
-            self.max_tokens
-        )
-
-        # 4. Build system prompt (f-string substitution, not template)
+    def _build_context_sections(self, claude_md_context: str) -> tuple[str, str]:
+        """Build dev_context_section and guidelines_section strings."""
         dev_context_section = ""
         if self.system_context.strip():
             dev_context_section = (
@@ -102,13 +94,39 @@ class AndroidAgent:
                 "---\n\n"
             )
 
+        return dev_context_section, guidelines_section
+
+    def run(self, task: str, claude_md_context: str = "") -> None:
+        """Execute single-shot agent task."""
+        engine = ContextEngine(self.project_root)
+        context = engine.load_context()
+
+        chat_model = get_chat_model(
+            self.model_provider,
+            self.model_path_or_name,
+            self.temperature,
+            self.max_tokens
+        )
+
+        dev_context_section, guidelines_section = self._build_context_sections(claude_md_context)
+
+        if self.model_provider == "huggingface":
+            self._run_hf_text_mode(chat_model, task, context, dev_context_section, guidelines_section)
+        else:
+            self._run_tool_agent(chat_model, task, context, dev_context_section, guidelines_section, claude_md_context)
+
+    def _run_tool_agent(
+        self, chat_model, task, context, dev_context_section, guidelines_section, claude_md_context
+    ) -> None:
+        """Run using LangChain's tool-calling agent (Claude and compatible models)."""
+        tools = make_file_tools(self.project_root)
+
         system_prompt = self.SYSTEM_PROMPT.format(
             dev_context_section=dev_context_section,
             project_context=context,
             guidelines_section=guidelines_section
         )
 
-        # 5. Create agent using new LangChain API
         agent_graph = create_agent(
             model=chat_model,
             tools=tools,
@@ -116,16 +134,12 @@ class AndroidAgent:
             debug=False
         )
 
-        # 6. Initialize cost tracker
         cost_tracker = AgentCostTracker(model=self.model_path_or_name)
 
-        # 7. Execute task
         try:
             input_state = {"messages": [{"role": "user", "content": task}]}
 
-            # Stream and track tokens
             for event in agent_graph.stream(input_state):
-                # Extract token usage from LLM responses if available
                 for key, value in event.items():
                     if isinstance(value, dict) and "messages" in value:
                         for msg in value["messages"]:
@@ -139,9 +153,136 @@ class AndroidAgent:
         except Exception as e:
             print(f"Agent error: {e}")
 
-        # 8. Log costs
         cost_tracker.flush(task_preview=task[:100])
-
-        # 9. Print completion
         print("\nJob Done")
         print(cost_tracker.summary())
+
+    def _run_hf_text_mode(
+        self, chat_model, task, context, dev_context_section, guidelines_section
+    ) -> None:
+        """Run using text generation + file parsing for HuggingFace models."""
+        prompt = self.HF_PROMPT.format(
+            dev_context_section=dev_context_section,
+            guidelines_section=guidelines_section,
+            project_context=context,
+            task=task
+        )
+
+        print("[INFO] Generating code with local model (text mode)...")
+        print("[INFO] This may take a while depending on your hardware...\n")
+
+        try:
+            response = chat_model.invoke(prompt)
+
+            # Extract text content from response
+            if hasattr(response, "content"):
+                text = response.content
+            else:
+                text = str(response)
+
+            if not text or not text.strip():
+                print("[ERROR] Model returned empty response.")
+                return
+
+            print("[INFO] Generation complete. Parsing output...\n")
+
+            # Parse and write files
+            files_written = self._parse_and_write_files(text)
+
+            if files_written:
+                print(f"\n[SUCCESS] Written {files_written} file(s) to {self.project_root}")
+            else:
+                print("\n[WARNING] No files could be parsed from model output.")
+                print("[DEBUG] Raw model output (first 500 chars):")
+                print(text[:500])
+
+        except Exception as e:
+            print(f"[ERROR] Generation failed: {e}")
+
+        print("\nJob Done")
+
+    def _parse_and_write_files(self, text: str) -> int:
+        """
+        Parse model output for FILE: markers and code blocks, write to disk.
+
+        Expected format:
+            FILE: path/to/File.kt
+            ```kotlin
+            <code>
+            ```
+
+        Returns:
+            Number of files written
+        """
+        # Pattern: FILE: <path> followed by a code block
+        pattern = r'FILE:\s*(.+?)\s*\n```\w*\n(.*?)```'
+        matches = re.findall(pattern, text, re.DOTALL)
+
+        if not matches:
+            # Fallback: try to find any code blocks and infer filenames
+            code_pattern = r'```(?:kotlin|kt)\n(.*?)```'
+            code_matches = re.findall(code_pattern, text, re.DOTALL)
+
+            if code_matches:
+                # Try to extract package/class names to build paths
+                for i, code in enumerate(code_matches):
+                    path = self._infer_file_path(code, i)
+                    if path:
+                        matches.append((path, code))
+
+        files_written = 0
+        for rel_path, content in matches:
+            rel_path = rel_path.strip().strip('"').strip("'")
+
+            # Security: ensure path stays within project root
+            full_path = (self.project_root / rel_path).resolve()
+            try:
+                full_path.relative_to(self.project_root.resolve())
+            except ValueError:
+                print(f"  [SKIP] Path escapes project root: {rel_path}")
+                continue
+
+            full_path.parent.mkdir(parents=True, exist_ok=True)
+
+            # Smart merge if file exists
+            if full_path.exists():
+                existing = full_path.read_text(encoding="utf-8")
+                if content.strip() in existing:
+                    print(f"  [SKIP] {rel_path} — content already present")
+                    continue
+                # Append new content
+                separator = "\n\n" if not existing.endswith("\n\n") else ""
+                full_path.write_text(existing + separator + content.strip() + "\n", encoding="utf-8")
+                print(f"  [MERGED] {rel_path}")
+            else:
+                full_path.write_text(content.strip() + "\n", encoding="utf-8")
+                print(f"  [CREATED] {rel_path}")
+
+            files_written += 1
+
+        return files_written
+
+    def _infer_file_path(self, code: str, index: int) -> str:
+        """
+        Try to infer a file path from Kotlin code content.
+
+        Args:
+            code: Kotlin source code
+            index: Fallback index for naming
+
+        Returns:
+            Inferred relative path or empty string
+        """
+        # Try to find package declaration
+        pkg_match = re.search(r'^package\s+([\w.]+)', code, re.MULTILINE)
+        # Try to find class/object name
+        class_match = re.search(r'(?:class|object|fun)\s+(\w+)', code)
+
+        if class_match:
+            class_name = class_match.group(1)
+            if pkg_match:
+                pkg_path = pkg_match.group(1).replace(".", "/")
+                return f"app/src/main/java/{pkg_path}/{class_name}.kt"
+            return f"app/src/main/java/{class_name}.kt"
+
+        return ""

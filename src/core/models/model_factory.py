@@ -10,6 +10,7 @@ from ..exceptions import UnsupportedProviderError
 from ..services import ConfigurationManager, ApiKeyValidator
 from ..config import DEFAULT_MODEL, DEFAULT_TEMPERATURE, DEFAULT_MAX_TOKENS
 from .claude_model import ClaudeModel
+from .minimax_model import MiniMaxModel
 
 
 class ModelFactory:
@@ -46,6 +47,8 @@ class ModelFactory:
         # Registry of available model classes
         self._model_registry: Dict[str, Type[ILanguageModel]] = {
             "anthropic": ClaudeModel,
+            "minimax": MiniMaxModel,
+            "huggingface": MiniMaxModel,  # Alias for convenience
         }
     
     def create_model(self, provider: str, config: ModelConfig) -> ILanguageModel:
@@ -53,7 +56,7 @@ class ModelFactory:
         Create a model instance for the specified provider.
         
         Args:
-            provider: The model provider (openai, anthropic, etc.)
+            provider: The model provider (openai, anthropic, minimax, etc.)
             config: Model configuration
             
         Returns:
@@ -71,12 +74,14 @@ class ModelFactory:
                 f"Provider '{provider}' not supported. Available providers: {available}"
             )
         
-        # Get API key from config or configuration manager
-        if not config.api_key:
-            config.api_key = self.config_manager.get_api_key(provider_lower)
-        
-        # Validate API key
-        self.api_key_validator.validate_key(config.api_key, provider_lower)
+        # Get API key from config or configuration manager (for API-based providers)
+        # MiniMax/HuggingFace models don't require API keys, but may use HF token for model download
+        if provider_lower != "minimax" and provider_lower != "huggingface":
+            if not config.api_key:
+                config.api_key = self.config_manager.get_api_key(provider_lower)
+            
+            # Validate API key for API-based providers
+            self.api_key_validator.validate_key(config.api_key, provider_lower)
         
         # Get model class and create instance
         model_class = self._model_registry[provider_lower]
@@ -117,3 +122,43 @@ class ModelFactory:
             max_tokens=DEFAULT_MAX_TOKENS
         )
         return self.create_model("anthropic", config)
+    
+    def create_minimax_model(self, model_name: str = None, temperature: float = 1.0, max_tokens: int = DEFAULT_MAX_TOKENS) -> ILanguageModel:
+        """
+        Create a MiniMax-M2.1 model with standard configuration.
+        
+        Args:
+            model_name: Model name (defaults to MiniMax-M2.1)
+            temperature: Generation temperature (default: 1.0 as per MiniMax docs)
+            max_tokens: Maximum tokens to generate
+            
+        Returns:
+            Configured MiniMax model instance
+        """
+        if model_name is None:
+            model_name = MiniMaxModel.DEFAULT_MODEL_ID
+        config = ModelConfig(
+            model_name=model_name,
+            temperature=temperature,
+            max_tokens=max_tokens
+        )
+        return self.create_model("minimax", config)
+    
+    def create_huggingface_model(self, model_name: str, temperature: float = 0.7, max_tokens: int = DEFAULT_MAX_TOKENS) -> ILanguageModel:
+        """
+        Create a HuggingFace model using MiniMax infrastructure.
+        
+        Args:
+            model_name: HuggingFace model ID
+            temperature: Generation temperature
+            max_tokens: Maximum tokens to generate
+            
+        Returns:
+            Configured HuggingFace model instance
+        """
+        config = ModelConfig(
+            model_name=model_name,
+            temperature=temperature,
+            max_tokens=max_tokens
+        )
+        return self.create_model("huggingface", config)

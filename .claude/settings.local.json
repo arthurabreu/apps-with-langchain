@@ -4,7 +4,13 @@
       "Bash(source:*)",
       "Bash(./.venv/bin/python -m pip list | grep -i dotenv)",
       "Bash(./.venv/bin/python -c \"from dotenv import load_dotenv; print\\('Success'\\)\")",
-      "Bash(./.venv/bin/python src/main.py)"
+      "Bash(./.venv/bin/python src/main.py)",
+      "Bash(/tmp/hf_model_usage.md:*)",
+      "Read(//tmp/**)",
+      "Bash(echo:*)",
+      "Bash(ls:*)",
+      "Bash(git checkout:*)",
+      "Bash(git add:*)"
     ]
   }
 }
