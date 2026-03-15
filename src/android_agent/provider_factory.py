@@ -9,6 +9,38 @@ from langchain_anthropic import ChatAnthropic
 from src.core.config import CODE_TEMPERATURE, INTERACTIVE_MAX_TOKENS
 
 
+def _resolve_hf_cache_path(model_path: str) -> str:
+    """
+    Resolve a HuggingFace cache directory to the actual snapshot path.
+
+    When models are downloaded with cache_dir, they are stored in a nested
+    structure: models--<org>--<name>/snapshots/<hash>/. This function
+    finds the actual model files within that structure.
+
+    Args:
+        model_path: Path to local model directory
+
+    Returns:
+        Resolved path to the actual model files
+    """
+    model_dir = Path(model_path)
+    if not model_dir.is_dir():
+        return model_path
+
+    # Look for any models--* subdirectory (HuggingFace cache structure)
+    for child in model_dir.iterdir():
+        if child.is_dir() and child.name.startswith("models--"):
+            snapshots_dir = child / "snapshots"
+            if snapshots_dir.is_dir():
+                snapshots = sorted(snapshots_dir.iterdir())
+                if snapshots:
+                    resolved = str(snapshots[-1])
+                    print(f"[INFO] Resolved HF cache path: {resolved}")
+                    return resolved
+
+    return model_path
+
+
 def _list_model_files(directory: Path) -> list[str]:
     """
     Glob for *.gguf and *.bin files in a directory.
@@ -85,17 +117,21 @@ def build_hf_chat_model(
         )
 
     try:
-        from langchain_huggingface import HuggingFacePipeline
+        from langchain_huggingface import HuggingFacePipeline, ChatHuggingFace
     except ImportError:
         raise ValueError("langchain-huggingface not installed. Install with: pip install langchain-huggingface")
 
     print("[WARNING] HuggingFace tool-calling support may be limited. Use Claude API for best results.")
 
-    return HuggingFacePipeline.from_model_id(
-        model_id=model_path,
+    resolved_path = _resolve_hf_cache_path(model_path)
+
+    llm = HuggingFacePipeline.from_model_id(
+        model_id=resolved_path,
         task="text-generation",
         pipeline_kwargs={"temperature": temperature, "max_new_tokens": max_tokens}
     )
+
+    return ChatHuggingFace(llm=llm)
 
 
 def get_chat_model(

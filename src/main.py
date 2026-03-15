@@ -21,6 +21,11 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 load_dotenv()
 print(f"Debug: Key found? {os.getenv('ANTHROPIC_API_KEY') is not None}")
 
+# Set HF_TOKEN from HUGGINGFACE_API_KEY for HuggingFace library compatibility
+hf_key = os.getenv("HUGGINGFACE_API_KEY")
+if hf_key:
+    os.environ["HF_TOKEN"] = hf_key
+
 def print_api_key_status():
     """Display the status of API keys."""
     keys = {
@@ -169,22 +174,185 @@ def cleanup_model_memory():
     except Exception as e:
         print(f"[ERROR] Cleanup failed: {e}")
 
-def test_local_model():
-    """Test the local Hugging Face model with different prompts."""
-    print("[TEST] Local Hugging Face Model Demo")
-    print("-" * 40)
-    
+def check_model_cached_locally(model_id: str) -> bool:
+    """
+    Check if a HuggingFace model is cached locally.
+
+    Args:
+        model_id: HuggingFace model ID (e.g., "MiniMaxAI/MiniMax-M2.1")
+
+    Returns:
+        True if model is cached, False otherwise
+    """
     try:
-        from core.langchain_huggingface_local import LocalHuggingFaceModel
-        
-        # Check memory before loading model
-        print("\n[INFO] Checking memory before loading model...")
+        from transformers import AutoTokenizer, AutoModelForCausalLM
+        from huggingface_hub import model_info
+
+        # Check if we can find the model locally via huggingface_hub
+        cache_dir = os.path.expanduser("~/.cache/huggingface/hub")
+        if os.path.exists(cache_dir):
+            # Check if model directory exists in cache
+            model_name_escaped = model_id.replace("/", "--")
+            model_cache_path = os.path.join(cache_dir, f"models--{model_name_escaped}")
+            return os.path.exists(model_cache_path)
+        return False
+    except:
+        return False
+
+
+def download_hf_model(model_id: str) -> bool:
+    """
+    Download a HuggingFace model if not already cached.
+
+    Args:
+        model_id: HuggingFace model ID
+
+    Returns:
+        True if model is available (downloaded or cached), False otherwise
+    """
+    try:
+        from transformers import AutoTokenizer, AutoModelForCausalLM
+
+        hf_token = os.getenv("HUGGINGFACE_API_KEY")
+
+        print(f"\n[INFO] Downloading tokenizer for {model_id}...")
+        AutoTokenizer.from_pretrained(
+            model_id,
+            trust_remote_code=True,
+            token=hf_token
+        )
+        print(f"[SUCCESS] Tokenizer downloaded")
+
+        print(f"\n[INFO] Downloading model {model_id} (this may take several minutes)...")
+        print("[INFO] Model size: Check HuggingFace page for exact size")
+        AutoModelForCausalLM.from_pretrained(
+            model_id,
+            torch_dtype="auto",
+            trust_remote_code=True,
+            token=hf_token,
+            device_map="cpu"  # Download to CPU first, will be loaded to proper device later
+        )
+        print(f"[SUCCESS] Model downloaded successfully!")
+        return True
+    except Exception as e:
+        print(f"[ERROR] Failed to download model: {e}")
+        return False
+
+
+def select_huggingface_model() -> str:
+    """
+    Let user select which HuggingFace model to test.
+
+    Returns:
+        Model ID string or None if user cancels
+    """
+    print("\n" + "=" * 60)
+    print("Select HuggingFace Model to Test")
+    print("=" * 60)
+
+    # Predefined models
+    models = {
+        "1": {
+            "id": "MiniMaxAI/MiniMax-M2.1",
+            "description": "MiniMax-M2.1 (229B parameters, high quality)",
+            "size": "~450GB (full), ~60GB (FP8 quantized)"
+        },
+        "2": {
+            "id": "mistralai/Mistral-7B-v0.1",
+            "description": "Mistral 7B (7B parameters, fast)",
+            "size": "~14GB"
+        },
+        "3": {
+            "id": "meta-llama/Llama-2-7b",
+            "description": "Llama 2 7B (7B parameters)",
+            "size": "~14GB"
+        },
+        "4": {
+            "id": "custom",
+            "description": "Enter custom HuggingFace model ID",
+            "size": "Varies"
+        }
+    }
+
+    print("\nAvailable models:")
+    for key, model in models.items():
+        cached = check_model_cached_locally(model["id"]) if model["id"] != "custom" else False
+        cached_status = " ✓ (cached locally)" if cached else ""
+        print(f"{key}. {model['description']}{cached_status}")
+        print(f"   Size: {model['size']}")
+        print()
+
+    choice = input("Enter your choice (1-4): ").strip()
+
+    if choice in models:
+        if choice == "4":
+            # Custom model
+            model_id = input("\nEnter HuggingFace model ID (e.g., 'username/model-name'): ").strip()
+            if not model_id:
+                print("[ERROR] No model ID provided.")
+                return None
+            return model_id
+        else:
+            return models[choice]["id"]
+    else:
+        print("[ERROR] Invalid choice.")
+        return None
+
+
+def test_local_model():
+    """Test a selected HuggingFace model with different prompts."""
+    print("\n[TEST] Local HuggingFace Model Testing")
+    print("=" * 60)
+
+    try:
+        # Let user select model
+        model_id = select_huggingface_model()
+        if not model_id:
+            return
+
+        # Check memory before loading
+        print("\n[INFO] Checking system memory...")
         check_memory_usage()
-        
-        # Initialize local model
-        print("\n[INFO] Initializing local model (this may take a moment)...")
-        local_model = LocalHuggingFaceModel()
-        
+
+        # Check if model is cached
+        is_cached = check_model_cached_locally(model_id)
+        print(f"\n[INFO] Model cache status: {'✓ Cached locally' if is_cached else '✗ Not cached'}")
+
+        if not is_cached:
+            # Ask user to download
+            download_choice = input(f"\nModel '{model_id}' is not cached locally.\nDownload now? (y/n): ").lower()
+            if download_choice != 'y':
+                print("[INFO] Model download skipped. Exiting.")
+                return
+
+            # Download the model
+            if not download_hf_model(model_id):
+                print("[ERROR] Failed to download model. Cannot proceed.")
+                return
+
+        # Create and test the model using factory
+        print("\n" + "=" * 60)
+        print("Initializing Model for Testing")
+        print("=" * 60)
+
+        from core.dependency_injection import get_container
+        from core.interfaces import ModelConfig
+
+        container = get_container()
+        factory = container.get_model_factory()
+
+        # Create model config
+        config = ModelConfig(
+            model_name=model_id,
+            temperature=1.0,
+            max_tokens=512
+        )
+
+        print(f"\n[INFO] Creating model instance: {model_id}")
+        model = factory.create_model("huggingface", config)
+
+        print("[SUCCESS] Model loaded and ready!")
+
         # Test prompts
         test_prompts = [
             {
@@ -200,31 +368,34 @@ def test_local_model():
                 "prompt": "Explain Kotlin coroutines to a beginner. Keep it under 150 words."
             }
         ]
-        
+
         for i, test in enumerate(test_prompts, 1):
             print(f"\n[{i}/{len(test_prompts)}] Testing: {test['name']}")
             print(f"Prompt: {test['prompt']}")
-            print("-" * 40)
-            
+            print("-" * 60)
+
             try:
-                response = local_model.generate(test['prompt'])
-                print(f"Response:\n{response}")            
+                result = model.generate(test['prompt'], skip_prompt=True)
+                print(f"Response:\n{result.content}")
+                print(f"\n[INFO] Tokens used: {result.tokens_used}")
             except Exception as e:
-                print(f"Error: {e}")
-            
+                print(f"[ERROR] Generation failed: {e}")
+
             if i < len(test_prompts):
                 if not prompt_continue_or_skip():
                     print("\n[INFO] Skipping remaining tests...")
                     break
-        
-        print("\n" + "=" * 40)
-        print("Local Model Testing Complete!")
-        
+
+        print("\n" + "=" * 60)
+        print("Model Testing Complete!")
+        print("=" * 60)
+
         # Ask if user wants to clean up
         cleanup_choice = input("\nClean up model memory? (y/n): ").lower()
         if cleanup_choice == 'y':
-            local_model.cleanup()
-            del local_model
+            print("\n[INFO] Cleaning up model resources...")
+            model.cleanup()
+            del model
             import gc
             gc.collect()
             print("[SUCCESS] Model memory cleaned up!")
@@ -232,14 +403,16 @@ def test_local_model():
         else:
             print("[INFO] Model remains loaded in memory.")
             print("[INFO] You can clean up later from the main menu.")
-        
-        print("=" * 40)
-        
+
+        print("=" * 60)
+
     except ImportError as e:
-        print(f"[ERROR] Missing dependencies for local model: {e}")
-        print("Install with: pip install transformers torch langchain-huggingface")
+        print(f"[ERROR] Missing dependencies: {e}")
+        print("Install with: pip install transformers torch accelerate")
     except Exception as e:
-        print(f"[ERROR] Failed to initialize local model: {e}")
+        print(f"[ERROR] Failed to test model: {e}")
+        import traceback
+        traceback.print_exc()
 
 def test_claude_model():
     """Test the Claude model with different prompts."""

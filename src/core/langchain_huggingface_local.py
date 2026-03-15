@@ -122,8 +122,22 @@ class LocalHuggingFaceModel:
             print("[STEP 1] Loading tokenizer...")
             spinner.start("[LOADING] Loading tokenizer")
 
+            # Resolve huggingface-hub cache path if necessary
+            actual_model_id = self.model_id
+            if os.path.isdir(self.model_id):
+                # Check for any models--* subdirectory (huggingface-hub cache structure)
+                for entry in os.listdir(self.model_id):
+                    if entry.startswith("models--"):
+                        snapshots_path = os.path.join(self.model_id, entry, "snapshots")
+                        if os.path.isdir(snapshots_path):
+                            snapshots = sorted(os.listdir(snapshots_path))
+                            if snapshots:
+                                actual_model_id = os.path.join(snapshots_path, snapshots[-1])
+                                print(f"[INFO] Resolved cache path to: {actual_model_id}")
+                                break
+
             self._tokenizer = AutoTokenizer.from_pretrained(
-                self.model_id,
+                actual_model_id,
                 token=os.getenv("HUGGINGFACE_API_KEY")
             )
 
@@ -147,7 +161,7 @@ class LocalHuggingFaceModel:
             if device == "cuda":
                 # For CUDA: use device_map="auto" to distribute across available GPUs
                 self._model = AutoModelForCausalLM.from_pretrained(
-                    self.model_id,
+                    actual_model_id,
                     torch_dtype=dtype,
                     device_map="auto",
                     token=os.getenv("HUGGINGFACE_API_KEY")
@@ -155,7 +169,7 @@ class LocalHuggingFaceModel:
             elif device == "mps":
                 # For MPS: don't use device_map, load normally then move to device
                 self._model = AutoModelForCausalLM.from_pretrained(
-                    self.model_id,
+                    actual_model_id,
                     torch_dtype=dtype,
                     token=os.getenv("HUGGINGFACE_API_KEY")
                 )
@@ -163,7 +177,7 @@ class LocalHuggingFaceModel:
             else:
                 # For CPU: load normally without device_map
                 self._model = AutoModelForCausalLM.from_pretrained(
-                    self.model_id,
+                    actual_model_id,
                     torch_dtype=dtype,
                     token=os.getenv("HUGGINGFACE_API_KEY")
                 )
