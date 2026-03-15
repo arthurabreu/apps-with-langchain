@@ -82,5 +82,17 @@
     "total_cost": 0.01691,
     "source": "android_agent",
     "prompt_preview": "create a screen with a list of fruits that comes from its view model"
+  },
+  {
+    "timestamp": "2026-03-14T21:46:19.010365-03:00",
+    "model": "claude-3-haiku-20240307",
+    "context": "android",
+    "input_tokens": 6157,
+    "output_tokens": 785,
+    "input_cost": 0.001539,
+    "output_cost": 0.000981,
+    "total_cost": 0.002521,
+    "source": "android_agent",
+    "prompt_preview": "create a screen with a list of fruits displayed in a simple way and hook it to my app navigation"
   }
 ]

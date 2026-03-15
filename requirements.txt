@@ -2,7 +2,7 @@
 langchain>=0.3.0               # Python 3.14 compatible
 langchain-community>=0.3.0     # Stable community package
 langchain-core>=0.3.0         # Core stabilized, Python 3.14 support
-langchain-cli>=0.3.0          # New CLI tool for project management
+langchain-cli>=0.0.30          # Use latest stable minor version
 
 # LLM Integration
 langchain-anthropic>=0.2.0    # Anthropic/Claude integration, Python 3.14 support

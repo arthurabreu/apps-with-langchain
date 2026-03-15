@@ -19,6 +19,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 # Load environment variables from .env file
 load_dotenv()
+print(f"Debug: Key found? {os.getenv('ANTHROPIC_API_KEY') is not None}")
 
 def print_api_key_status():
     """Display the status of API keys."""
