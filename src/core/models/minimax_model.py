@@ -282,6 +282,14 @@ class MiniMaxModel(ILanguageModel):
 
             # Generate text
             max_new_tokens = kwargs.get('max_new_tokens', self.config.max_tokens)
+
+            # Cap max_tokens for very large models with CPU offloading to prevent OOM during inference
+            # Large models need significant space for output generation
+            total_params = sum(p.numel() for p in self._model.parameters())
+            if total_params > 20e9:  # > 20B parameters
+                max_new_tokens = min(max_new_tokens, 512)
+                self.logger.warning(f"Capping max_tokens to 512 for large model ({total_params/1e9:.1f}B) to avoid OOM during generation")
+
             outputs = self._model.generate(
                 **inputs,
                 max_new_tokens=max_new_tokens,
