@@ -38,12 +38,13 @@ def _select_device() -> Tuple[str, torch.dtype]:
     return device, dtype
 
 
-def _get_max_memory(fraction: float = 0.85) -> dict:
+def _get_max_memory(fraction: float = 0.75) -> dict:
     """
-    Calculate max_memory dict to cap GPU and CPU memory at fraction of available.
+    Calculate max_memory dict based on CURRENT free memory, not total.
+    This is smarter than using a fraction of total, which doesn't account for OS overhead.
 
     Args:
-        fraction: Fraction of total available memory to use (e.g., 0.85 = 85%)
+        fraction: Fraction of CURRENT free memory to use (e.g., 0.75 = 75% of what's free now)
 
     Returns:
         Dictionary suitable for HuggingFace transformers device_map="auto"
@@ -51,10 +52,14 @@ def _get_max_memory(fraction: float = 0.85) -> dict:
     mem = {}
     if torch.cuda.is_available():
         for i in range(torch.cuda.device_count()):
-            total = torch.cuda.get_device_properties(i).total_memory
-            mem[i] = f"{int(total * fraction / (1024**2))}MiB"
-    ram = psutil.virtual_memory().total
-    mem["cpu"] = f"{int(ram * fraction / (1024**2))}MiB"
+            # Get current free VRAM (not total)
+            free = torch.cuda.mem_get_info(i)[0] / (1024**2)  # in MiB
+            # Use 75% of what's currently free
+            mem[i] = f"{int(free * fraction)}MiB"
+
+    # Get current free RAM
+    free_ram = psutil.virtual_memory().available / (1024**2)  # in MiB
+    mem["cpu"] = f"{int(free_ram * fraction)}MiB"
     return mem
 
 
@@ -200,7 +205,7 @@ class LocalHuggingFaceModel:
 
             # Load model with device-specific configuration
             if device == "cuda":
-                max_mem = _get_max_memory(fraction=0.90)
+                max_mem = _get_max_memory(fraction=0.75)
                 print(f"[INFO] Memory limits: {max_mem}")
                 print("[INFO] Large models will offload to CPU if needed (slower but works)")
 
