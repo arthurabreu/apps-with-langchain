@@ -103,5 +103,82 @@
     "tokens_used": 513,
     "estimated_cost": 0.0,
     "operation_type": "prompt"
+  },
+  {
+    "timestamp": "2026-03-17T11:17:57.678664-03:00",
+    "model": "/home/arthurabreu/HuggingFaceModels/mistralai/Mistral-7B-Instruct",
+    "tokens_used": 524,
+    "estimated_cost": 0.0,
+    "operation_type": "prompt"
+  },
+  {
+    "timestamp": "2026-03-17T11:30:04.649941-03:00",
+    "model": "/home/arthurabreu/HuggingFaceModels/mistralai/Mistral-7B-Instruct",
+    "tokens_used": 1024,
+    "estimated_cost": 0.0,
+    "operation_type": "response"
+  },
+  {
+    "timestamp": "2026-03-17T11:39:25.652922-03:00",
+    "model": "/home/arthurabreu/HuggingFaceModels/mistralai/Mistral-7B-Instruct",
+    "tokens_used": 524,
+    "estimated_cost": 0.0,
+    "operation_type": "prompt"
+  },
+  {
+    "timestamp": "2026-03-17T11:52:01.897165-03:00",
+    "model": "/home/arthurabreu/HuggingFaceModels/mistralai/Mistral-7B-Instruct",
+    "tokens_used": 1024,
+    "estimated_cost": 0.0,
+    "operation_type": "response"
+  },
+  {
+    "timestamp": "2026-03-17T12:04:16.862352-03:00",
+    "model": "/home/arthurabreu/HuggingFaceModels/mistralai/Mistral-7B-Instruct",
+    "tokens_used": 524,
+    "estimated_cost": 0.0,
+    "operation_type": "prompt"
+  },
+  {
+    "timestamp": "2026-03-17T12:05:36.395651-03:00",
+    "model": "/home/arthurabreu/HuggingFaceModels/mistralai/Mistral-7B-Instruct",
+    "tokens_used": 524,
+    "estimated_cost": 0.0,
+    "operation_type": "prompt"
+  },
+  {
+    "timestamp": "2026-03-17T12:18:48.251304-03:00",
+    "model": "/home/arthurabreu/HuggingFaceModels/mistralai/Mistral-7B-Instruct",
+    "tokens_used": 1017,
+    "estimated_cost": 0.0,
+    "operation_type": "response"
+  },
+  {
+    "timestamp": "2026-03-17T12:45:40.062586-03:00",
+    "model": "/home/arthurabreu/HuggingFaceModels/mistralai/Mistral-7B-Instruct",
+    "tokens_used": 524,
+    "estimated_cost": 0.0,
+    "operation_type": "prompt"
+  },
+  {
+    "timestamp": "2026-03-17T12:58:17.457982-03:00",
+    "model": "/home/arthurabreu/HuggingFaceModels/mistralai/Mistral-7B-Instruct",
+    "tokens_used": 1016,
+    "estimated_cost": 0.0,
+    "operation_type": "response"
+  },
+  {
+    "timestamp": "2026-03-17T13:05:43.126875-03:00",
+    "model": "/home/arthurabreu/HuggingFaceModels/mistralai/Mistral-7B-Instruct",
+    "tokens_used": 524,
+    "estimated_cost": 0.0,
+    "operation_type": "prompt"
+  },
+  {
+    "timestamp": "2026-03-17T13:18:23.244234-03:00",
+    "model": "/home/arthurabreu/HuggingFaceModels/mistralai/Mistral-7B-Instruct",
+    "tokens_used": 1012,
+    "estimated_cost": 0.0,
+    "operation_type": "response"
   }
 ]
