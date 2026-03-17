@@ -242,51 +242,25 @@ def select_hf_model() -> Optional[Tuple[str, Path]]:
     print(f"\n[INFO] Models folder: {hf_models_folder}")
     print()
 
-    # 1. Collect predefined models
-    predefined_models = [
-        {"id": "mistralai/Mistral-7B-Instruct-v0.1", "description": "Mistral 7B Instruct (RECOMMENDED)"},
-        {"id": "mistralai/Mistral-7B-v0.1", "description": "Mistral 7B Base"},
-        {"id": "meta-llama/Llama-2-7b-chat-hf", "description": "Llama 2 7B Chat"},
-        {"id": "MiniMaxAI/MiniMax-M2.1", "description": "MiniMax-M2.1 (⚠️ 450GB)"},
-    ]
-
-    # 2. Collect local folders from the models directory
+    # Collect local folders from the models directory
     local_folders = []
     if hf_models_folder.exists():
         for item in hf_models_folder.iterdir():
             if item.is_dir() and any(item.iterdir()):
-                # Avoid duplicates with predefined models if they have the same safe name
-                folder_name = item.name
-                is_predefined = False
-                for model in predefined_models:
-                    if model["id"].replace("/", "-") == folder_name:
-                        is_predefined = True
-                        break
-                
-                if not is_predefined:
-                    local_folders.append(item)
+                local_folders.append(item)
 
-    # 3. Build selection list
+    # Build selection list with only local models
     selection_list = []
-    
-    print("Predefined models:")
-    for model in predefined_models:
-        idx = len(selection_list) + 1
-        is_downloaded = is_model_downloaded(model["id"], hf_models_folder)
-        status = " ✓ (downloaded)" if is_downloaded else ""
-        size_info = get_model_size(model["id"], hf_token)
-        size_str = f" - {size_info}" if size_info else ""
-        
-        print(f"{idx}. {model['description']}{size_str}{status}")
-        selection_list.append({"type": "predefined", "id": model["id"]})
 
     if local_folders:
-        print("\nLocal models found in folder:")
+        print("Local models found in folder:")
         for folder in sorted(local_folders):
             idx = len(selection_list) + 1
             size = get_model_folder_size(folder)
             print(f"{idx}. {folder.name} (Local Folder - {size})")
             selection_list.append({"type": "local", "id": folder.name, "path": folder})
+    else:
+        print("[INFO] No local models found in folder")
 
     # Add custom option
     custom_idx = len(selection_list) + 1
@@ -303,17 +277,17 @@ def select_hf_model() -> Optional[Tuple[str, Path]]:
         choice_idx = int(choice) - 1
         if 0 <= choice_idx < len(selection_list):
             selected = selection_list[choice_idx]
-            
+
             if selected["type"] == "custom":
                 model_id = input("\nEnter HuggingFace model ID (e.g., 'username/model-name'): ").strip()
                 if not model_id:
                     return None
-                
+
                 # Check if already downloaded
                 if is_model_downloaded(model_id, hf_models_folder):
                     safe_name = model_id.replace("/", "-")
                     return model_id, hf_models_folder / safe_name
-                
+
                 # Ask to download
                 print(f"\n[INFO] Model {model_id} not found locally.")
                 download_choice = input("Download this model? (y/n): ").strip().lower()
@@ -325,24 +299,6 @@ def select_hf_model() -> Optional[Tuple[str, Path]]:
 
             elif selected["type"] == "local":
                 return selected["id"], selected["path"]
-
-            else: # predefined
-                model_id = selected["id"]
-                if is_model_downloaded(model_id, hf_models_folder):
-                    safe_name = model_id.replace("/", "-")
-                    return model_id, hf_models_folder / safe_name
-                
-                print(f"\n[INFO] Model {model_id} is not downloaded.")
-                size_info = get_model_size(model_id, hf_token)
-                if size_info:
-                    print(f"[INFO] Download size: {size_info}")
-                
-                download_choice = input("Download this model? (y/n): ").strip().lower()
-                if download_choice == 'y':
-                    if download_model(model_id, hf_models_folder, hf_token):
-                        safe_name = model_id.replace("/", "-")
-                        return model_id, hf_models_folder / safe_name
-                return None
         else:
             print("[ERROR] Invalid choice.")
             return None
