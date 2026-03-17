@@ -168,39 +168,56 @@ def build_hf_chat_model(
     resolved_path = _resolve_hf_cache_path(model_path)
 
     # Setup GPU acceleration and memory limits
-    model_kwargs = {}
-    device = "cpu"
+    from transformers import AutoTokenizer, AutoModelForCausalLM
+    from transformers import pipeline as transformers_pipeline
+
     if torch.cuda.is_available():
-        device = "cuda"
         print(f"[INFO] CUDA detected: {torch.cuda.get_device_name(0)}")
         print("[INFO] Applying 4-bit quantization to reduce VRAM usage...")
 
         # 4-bit quantization config
         bnb_config = _build_bnb_config()
-        model_kwargs["quantization_config"] = bnb_config
-        model_kwargs["device_map"] = "auto"
 
         # Memory limits at 85% of available VRAM and RAM
         max_mem = _get_max_memory(fraction=0.85)
-        model_kwargs["max_memory"] = max_mem
         print(f"[INFO] Memory limits: {max_mem}")
+
+        # Load model with quantization and memory limits
+        print("[INFO] Loading model with GPU acceleration...")
+        model = AutoModelForCausalLM.from_pretrained(
+            resolved_path,
+            quantization_config=bnb_config,
+            device_map="auto",
+            max_memory=max_mem,
+            trust_remote_code=True,
+            token=os.getenv("HUGGINGFACE_API_KEY")
+        )
+
+        tokenizer = AutoTokenizer.from_pretrained(
+            resolved_path,
+            trust_remote_code=True,
+            token=os.getenv("HUGGINGFACE_API_KEY")
+        )
+
+        # Create pipeline directly with loaded model and tokenizer
+        text_gen_pipeline = transformers_pipeline(
+            "text-generation",
+            model=model,
+            tokenizer=tokenizer,
+            temperature=temperature,
+            max_new_tokens=max_tokens,
+            device_map="auto"
+        )
+
+        llm = HuggingFacePipeline(pipeline=text_gen_pipeline)
     else:
         print("[WARNING] No CUDA GPU detected. Using CPU (slow and memory-intensive).")
-        model_kwargs["device_map"] = "cpu"
-
-    # Pass model kwargs to HuggingFacePipeline
-    pipeline_kwargs = {
-        "temperature": temperature,
-        "max_new_tokens": max_tokens,
-        **model_kwargs
-    }
-
-    llm = HuggingFacePipeline.from_model_id(
-        model_id=resolved_path,
-        task="text-generation",
-        model_kwargs=model_kwargs,
-        pipeline_kwargs={"temperature": temperature, "max_new_tokens": max_tokens}
-    )
+        # Fallback to CPU-only
+        llm = HuggingFacePipeline.from_model_id(
+            model_id=resolved_path,
+            task="text-generation",
+            pipeline_kwargs={"temperature": temperature, "max_new_tokens": max_tokens}
+        )
 
     return ChatHuggingFace(llm=llm)
 
