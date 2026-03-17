@@ -1,0 +1,8 @@
+Create a sample Android application structure for a todo list app. Include:
+1. MainActivity layout with RecyclerView for todo items
+2. TodoItem data class
+3. TodoAdapter for displaying items
+4. Add, update, and delete functionality
+5. SharedPreferences for data persistence
+
+Format the response as Kotlin code examples.

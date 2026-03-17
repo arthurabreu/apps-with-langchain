@@ -4,9 +4,46 @@ Returns raw ChatAnthropic or HuggingFacePipeline instances (not wrapper classes)
 """
 
 import os
+import torch
+import psutil
 from pathlib import Path
 from langchain_anthropic import ChatAnthropic
 from src.core.config import CODE_TEMPERATURE, INTERACTIVE_MAX_TOKENS
+
+
+def _get_max_memory(fraction: float = 0.85) -> dict:
+    """
+    Calculate max_memory dict to cap GPU and CPU memory at fraction of available.
+
+    Args:
+        fraction: Fraction of total available memory to use (e.g., 0.85 = 85%)
+
+    Returns:
+        Dictionary suitable for HuggingFace transformers device_map="auto"
+    """
+    mem = {}
+    if torch.cuda.is_available():
+        for i in range(torch.cuda.device_count()):
+            total = torch.cuda.get_device_properties(i).total_memory
+            mem[i] = f"{int(total * fraction / (1024**2))}MiB"
+    ram = psutil.virtual_memory().total
+    mem["cpu"] = f"{int(ram * fraction / (1024**2))}MiB"
+    return mem
+
+
+def _build_bnb_config():
+    """Build BitsAndBytesConfig for 4-bit quantization."""
+    try:
+        from transformers import BitsAndBytesConfig
+    except ImportError:
+        raise ValueError("transformers>=4.30 required for BitsAndBytesConfig")
+
+    return BitsAndBytesConfig(
+        load_in_4bit=True,
+        bnb_4bit_quant_type="nf4",
+        bnb_4bit_use_double_quant=True,
+        bnb_4bit_compute_dtype=torch.bfloat16,
+    )
 
 
 def _resolve_hf_cache_path(model_path: str) -> str:
@@ -97,7 +134,7 @@ def build_hf_chat_model(
     max_tokens: int = INTERACTIVE_MAX_TOKENS
 ) -> any:
     """
-    Build a HuggingFacePipeline instance for tool-calling.
+    Build a HuggingFacePipeline instance for tool-calling with GPU + quantization.
 
     Args:
         model_path: Path to local model or HuggingFace model ID
@@ -121,13 +158,47 @@ def build_hf_chat_model(
     except ImportError:
         raise ValueError("langchain-huggingface not installed. Install with: pip install langchain-huggingface")
 
-    print("[WARNING] HuggingFace tool-calling support may be limited. Use Claude API for best results.")
+    print("[INFO] Initializing HuggingFace model with GPU acceleration and quantization...")
+
+    # Limit CPU thread usage to 85% of available cores
+    cpu_threads = max(1, int(os.cpu_count() * 0.85))
+    torch.set_num_threads(cpu_threads)
+    print(f"[INFO] CPU threads limited to {cpu_threads}/{os.cpu_count()}")
 
     resolved_path = _resolve_hf_cache_path(model_path)
+
+    # Setup GPU acceleration and memory limits
+    model_kwargs = {}
+    device = "cpu"
+    if torch.cuda.is_available():
+        device = "cuda"
+        print(f"[INFO] CUDA detected: {torch.cuda.get_device_name(0)}")
+        print("[INFO] Applying 4-bit quantization to reduce VRAM usage...")
+
+        # 4-bit quantization config
+        bnb_config = _build_bnb_config()
+        model_kwargs["quantization_config"] = bnb_config
+        model_kwargs["device_map"] = "auto"
+
+        # Memory limits at 85% of available VRAM and RAM
+        max_mem = _get_max_memory(fraction=0.85)
+        model_kwargs["max_memory"] = max_mem
+        print(f"[INFO] Memory limits: {max_mem}")
+    else:
+        print("[WARNING] No CUDA GPU detected. Using CPU (slow and memory-intensive).")
+        model_kwargs["device_map"] = "cpu"
+
+    # Pass model kwargs to HuggingFacePipeline
+    pipeline_kwargs = {
+        "temperature": temperature,
+        "max_new_tokens": max_tokens,
+        **model_kwargs
+    }
 
     llm = HuggingFacePipeline.from_model_id(
         model_id=resolved_path,
         task="text-generation",
+        model_kwargs=model_kwargs,
         pipeline_kwargs={"temperature": temperature, "max_new_tokens": max_tokens}
     )
 

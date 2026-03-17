@@ -8,6 +8,7 @@ import torch
 import threading
 import time
 import sys
+import psutil
 from transformers import AutoTokenizer, AutoModelForCausalLM, pipeline
 from typing import Optional, Dict, Any, Tuple
 
@@ -35,6 +36,41 @@ def _select_device() -> Tuple[str, torch.dtype]:
         print(f"[INFO] No GPU detected: Using CPU (device: {device}, dtype: {dtype})")
 
     return device, dtype
+
+
+def _get_max_memory(fraction: float = 0.85) -> dict:
+    """
+    Calculate max_memory dict to cap GPU and CPU memory at fraction of available.
+
+    Args:
+        fraction: Fraction of total available memory to use (e.g., 0.85 = 85%)
+
+    Returns:
+        Dictionary suitable for HuggingFace transformers device_map="auto"
+    """
+    mem = {}
+    if torch.cuda.is_available():
+        for i in range(torch.cuda.device_count()):
+            total = torch.cuda.get_device_properties(i).total_memory
+            mem[i] = f"{int(total * fraction / (1024**2))}MiB"
+    ram = psutil.virtual_memory().total
+    mem["cpu"] = f"{int(ram * fraction / (1024**2))}MiB"
+    return mem
+
+
+def _build_bnb_config():
+    """Build BitsAndBytesConfig for 4-bit quantization."""
+    try:
+        from transformers import BitsAndBytesConfig
+    except ImportError:
+        raise ValueError("transformers>=4.30 required for BitsAndBytesConfig")
+
+    return BitsAndBytesConfig(
+        load_in_4bit=True,
+        bnb_4bit_quant_type="nf4",
+        bnb_4bit_use_double_quant=True,
+        bnb_4bit_compute_dtype=torch.bfloat16,
+    )
 
 
 class LoadingSpinner:
@@ -115,6 +151,11 @@ class LocalHuggingFaceModel:
         if self._pipeline is not None:
             return self._pipeline
 
+        # Limit CPU thread usage to 85% of available cores
+        cpu_threads = max(1, int(os.cpu_count() * 0.85))
+        torch.set_num_threads(cpu_threads)
+        print(f"[INFO] CPU threads limited to {cpu_threads}/{os.cpu_count()}")
+
         spinner = LoadingSpinner()
 
         try:
@@ -159,11 +200,18 @@ class LocalHuggingFaceModel:
 
             # Load model with device-specific configuration
             if device == "cuda":
-                # For CUDA: use device_map="auto" to distribute across available GPUs
+                # For CUDA: use device_map="auto" with 4-bit quantization and memory limits
+                print("[INFO] Applying 4-bit quantization to reduce VRAM usage...")
+                bnb_config = _build_bnb_config()
+                max_mem = _get_max_memory(fraction=0.85)
+                print(f"[INFO] Memory limits: {max_mem}")
+
                 self._model = AutoModelForCausalLM.from_pretrained(
                     actual_model_id,
                     torch_dtype=dtype,
                     device_map="auto",
+                    quantization_config=bnb_config,
+                    max_memory=max_mem,
                     token=os.getenv("HUGGINGFACE_API_KEY")
                 )
             elif device == "mps":

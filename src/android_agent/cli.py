@@ -98,8 +98,13 @@ def _prompt_new_directory() -> Path:
         return project_root
 
 
-def main():
-    """Main CLI entry point."""
+def main(task: str = None):
+    """
+    Main CLI entry point.
+
+    Args:
+        task: Optional pre-provided task string. If not provided, user will be prompted.
+    """
     print("\n" + "=" * 40)
     print("🤖 ANDROID CODE-GEN AGENT")
     print("=" * 40 + "\n")
@@ -183,14 +188,20 @@ def main():
         else:
             print("Invalid choice. Enter 1 or 2.\n")
 
-    # 3. Get task
-    print("=" * 40)
-    print("✍️  Task Description:")
-    print("=" * 40)
-    task = input("What would you like to generate? ").strip()
-    if not task:
-        print("Error: Task cannot be empty.")
-        return
+    # 3. Get task (use provided task or prompt user)
+    if task is None:
+        print("=" * 40)
+        print("✍️  Task Description:")
+        print("=" * 40)
+        task = input("What would you like to generate? ").strip()
+        if not task:
+            print("Error: Task cannot be empty.")
+            return
+    else:
+        print("=" * 40)
+        print("✍️  Task Description:")
+        print("=" * 40)
+        print(f"Task: {task[:100]}{'...' if len(task) > 100 else ''}\n")
     print()
 
     # 4. Run agent

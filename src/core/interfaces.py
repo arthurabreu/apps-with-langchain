@@ -178,3 +178,20 @@ class IModelFactory(Protocol):
     def register_model(self, provider: str, model_class: type) -> None:
         """Register a new model provider."""
         ...
+
+
+class IFileExporter(Protocol):
+    """Interface for exporting content to different file formats."""
+
+    def export_to_excel(self, input_file: str, output_file: str) -> bool:
+        """
+        Export contents of an input file (MD, TXT, JSON) to an Excel sheet.
+        
+        Args:
+            input_file: Path to the source file (.md, .txt, or .json).
+            output_file: Path to the target Excel file (.xlsx).
+            
+        Returns:
+            True if successful, False otherwise.
+        """
+        ...

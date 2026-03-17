@@ -8,14 +8,19 @@ warnings.filterwarnings("ignore", category=UserWarning, module="langchain_core._
 
 import os
 import sys
+# Add project root and src to path so we can import files correctly before importing from core
+project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+src_dir = os.path.join(project_root, "src")
+if project_root not in sys.path:
+    sys.path.insert(0, project_root)
+if src_dir not in sys.path:
+    sys.path.insert(1, src_dir)
+
 from dotenv import load_dotenv
 from core.config import (
     DEFAULT_MODEL, DEFAULT_MAX_TOKENS, DEFAULT_TEMPERATURE,
     INTERACTIVE_MAX_TOKENS, RESPONSES_DIR
 )
-
-# Add project root to path so we can import test files
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 # Load environment variables from .env file
 load_dotenv()
@@ -211,7 +216,8 @@ def download_hf_model(model_id: str) -> bool:
         True if model is available (downloaded or cached), False otherwise
     """
     try:
-        from transformers import AutoTokenizer, AutoModelForCausalLM
+        from transformers import AutoTokenizer
+        from huggingface_hub import snapshot_download
 
         hf_token = os.getenv("HUGGINGFACE_API_KEY")
 
@@ -225,13 +231,14 @@ def download_hf_model(model_id: str) -> bool:
 
         print(f"\n[INFO] Downloading model {model_id} (this may take several minutes)...")
         print("[INFO] Model size: Check HuggingFace page for exact size")
-        AutoModelForCausalLM.from_pretrained(
-            model_id,
-            torch_dtype="auto",
-            trust_remote_code=True,
+
+        # Use snapshot_download to download files without loading into memory
+        snapshot_download(
+            repo_id=model_id,
             token=hf_token,
-            device_map="cpu"  # Download to CPU first, will be loaded to proper device later
+            local_dir_use_symlinks=False
         )
+
         print(f"[SUCCESS] Model downloaded successfully!")
         return True
     except Exception as e:
@@ -1030,13 +1037,203 @@ def ask_with_context():
         print(f"[ERROR] Failed to generate response: {e}")
 
 
+def prompt_for_task(agent_name: str = "Agent") -> str:
+    """
+    Prompt user to choose between loading a task from file or typing manually.
+
+    Args:
+        agent_name: Name of the agent for display purposes (e.g., "Android Agent", "Excel Agent")
+
+    Returns:
+        The task/prompt string
+    """
+    from pathlib import Path
+
+    files_dir = Path(__file__).parent.parent / "files"
+
+    # Get list of available script files
+    script_files = []
+    if files_dir.exists():
+        script_files = sorted([f for f in files_dir.glob("*.txt")])
+
+    print("\n" + "=" * 60)
+    print(f"✍️  {agent_name} - Task Selection")
+    print("=" * 60)
+
+    if script_files:
+        print("\nChoose how to provide the task/prompt:")
+        print("1. Load from a script file")
+        print("2. Type instructions manually\n")
+
+        choice = input("Select [1 or 2]: ").strip()
+
+        if choice == "1":
+            print("\n📁 Available Scripts:")
+            for i, script_file in enumerate(script_files, 1):
+                print(f"  {i}. {script_file.name}")
+            print(f"  {len(script_files) + 1}. Cancel\n")
+
+            while True:
+                file_choice = input("Select script [number]: ").strip()
+                if file_choice.isdigit():
+                    file_idx = int(file_choice) - 1
+                    if 0 <= file_idx < len(script_files):
+                        try:
+                            with open(script_files[file_idx], "r", encoding="utf-8") as f:
+                                task = f.read().strip()
+                            print(f"\n✓ Loaded: {script_files[file_idx].name}\n")
+                            return task
+                        except Exception as e:
+                            print(f"[ERROR] Failed to load file: {e}\n")
+                            break
+                    elif file_idx == len(script_files):
+                        print("Cancelled.\n")
+                        return prompt_for_task(agent_name)
+                    else:
+                        print("Invalid selection. Try again.\n")
+                else:
+                    print("Invalid input. Try again.\n")
+        elif choice == "2":
+            print("\n📝 Task Description:")
+            task = input("Enter what you would like to generate: ").strip()
+            if not task:
+                print("[ERROR] Task cannot be empty.")
+                return prompt_for_task(agent_name)
+            return task
+        else:
+            print("[ERROR] Invalid choice. Please select 1 or 2.")
+            return prompt_for_task(agent_name)
+    else:
+        # No script files available, just ask for input
+        print("\n📝 Task Description:")
+        task = input("Enter what you would like to generate: ").strip()
+        if not task:
+            print("[ERROR] Task cannot be empty.")
+            return prompt_for_task(agent_name)
+        return task
+
+
 def run_android_agent():
     """Launch the Android code-gen agent."""
     try:
         from android_agent.cli import main as android_main
-        android_main()
+
+        # Get task from user (file or manual input)
+        task = prompt_for_task("Android Code-Gen Agent")
+        if not task:
+            return
+
+        # Pass task to the android agent
+        android_main(task=task)
     except Exception as e:
         print(f"[ERROR] Failed to launch Android agent: {e}")
+
+
+def run_hf_to_excel_agent():
+    """
+    Launch the LLM to Excel Agent using local Hugging Face models.
+    Generates structured response and exports to Excel.
+    """
+    from core.dependency_injection import get_container
+    from core.interfaces import ModelConfig
+    from core.hf_model_manager import select_hf_model
+    from core.services import get_brazil_time
+    from pathlib import Path
+    import json
+
+    print("\n" + "=" * 60)
+    print("🤖 LLM TO EXCEL AGENT (Local Hugging Face)")
+    print("=" * 60)
+
+    try:
+        # 1. Select HF model
+        result = select_hf_model()
+        if result is None:
+            return
+
+        model_id, model_folder = result
+        print(f"✓ Using model: {model_id}\n")
+
+        # 2. Get task/prompt (from file or manual input)
+        task = prompt_for_task("LLM to Excel Agent")
+        if not task:
+            return
+
+        print("💡 Tip: If you use Markdown Tables or numbered sections, the Excel export will be more structured.\n")
+
+        # 3. Choose output format for the LLM response
+        print("\n📄 Select Response Format:")
+        print("1. JSON (Recommended - Best for table structure in Excel) [DEFAULT]")
+        print("2. Plain Text / Markdown")
+        format_choice = input("Select [1 or 2, default=1]: ").strip()
+        
+        is_json = format_choice != "2"
+        if is_json:
+            task += "\n\nIMPORTANT: Return ONLY a valid JSON object or a list of objects. No other text."
+            file_ext = ".json"
+        else:
+            file_ext = ".md"
+
+        # 4. Initialize and run model
+        container = get_container()
+        factory = container.get_model_factory()
+        
+        config = ModelConfig(
+            model_name=str(model_folder),
+            temperature=0.7,
+            max_tokens=1024
+        )
+
+        print("\n[INFO] Initializing model...")
+        model = factory.create_model("huggingface", config)
+        
+        print("\n[INFO] Generating response...")
+        gen_result = model.generate(task, skip_prompt=True)
+        
+        content = gen_result.content.strip()
+        print(f"\nResponse received ({len(content)} characters).")
+
+        # 5. Save response to file
+        responses_dir = Path(RESPONSES_DIR) / "excel_exports"
+        responses_dir.mkdir(parents=True, exist_ok=True)
+
+        brazil_time = get_brazil_time()
+        timestamp = brazil_time.strftime("%Y%m%d_%H%M%S")
+        input_filename = f"llm_output_{timestamp}{file_ext}"
+        input_filepath = responses_dir / input_filename
+
+        with open(input_filepath, "w", encoding="utf-8") as f:
+            f.write(content)
+        
+        print(f"✓ Response saved to: {input_filepath}")
+
+        # 6. Export to Excel
+        output_filename = f"llm_report_{timestamp}.xlsx"
+        output_filepath = responses_dir / output_filename
+        
+        print(f"\n[INFO] Exporting to Excel: {output_filepath}...")
+        exporter = container.get_file_exporter()
+        
+        success = exporter.export_to_excel(str(input_filepath), str(output_filepath))
+        
+        if success:
+            print(f"✅ SUCCESS! Your report is ready at: {output_filepath}")
+            # Show size
+            size = os.path.getsize(output_filepath)
+            print(f"   File size: {size / 1024:.2f} KB")
+        else:
+            print("❌ FAILED to export to Excel. Check logs for details.")
+
+        # 7. Cleanup
+        cleanup_choice = input("\nClean up model memory? (y/n): ").lower()
+        if cleanup_choice == 'y':
+            model.cleanup()
+            print("[SUCCESS] Model memory cleaned up.")
+
+    except Exception as e:
+        print(f"[ERROR] Agent failed: {e}")
+        import traceback
+        traceback.print_exc()
 
 
 def model_testing_menu():
@@ -1177,39 +1374,44 @@ def main():
         print("What would you like to do?")
         print("\n⭐ FEATURED:")
         print("1. Android Code-Gen Agent")
+        print("2. LLM to Excel Agent")
         print("\n📚 TESTING & LEARNING:")
-        print("2. Model Testing & Evaluation")
-        print("3. Learning & Examples")
+        print("3. Model Testing & Evaluation")
+        print("4. Learning & Examples")
         print("\n📊 ADVANCED:")
-        print("4. Context & Benchmarking")
-        print("5. System & Maintenance")
-        print("\n6. Exit\n")
+        print("5. Context & Benchmarking")
+        print("6. System & Maintenance")
+        print("\n7. Exit\n")
 
-        choice = input("Enter your choice (1-6): ").strip()
+        choice = input("Enter your choice (1-7): ").strip()
 
         if choice == "1":
             print()
             run_android_agent()
             print()
         elif choice == "2":
-            model_testing_menu()
+            print()
+            run_hf_to_excel_agent()
             print()
         elif choice == "3":
-            learning_menu()
+            model_testing_menu()
             print()
         elif choice == "4":
-            context_benchmarking_menu()
+            learning_menu()
             print()
         elif choice == "5":
-            system_maintenance_menu()
+            context_benchmarking_menu()
             print()
         elif choice == "6":
+            system_maintenance_menu()
+            print()
+        elif choice == "7":
             print("\nThank you for using the LangChain Model Testing Lab!")
             print("All memory will be freed when you close this application.")
             print("Goodbye!")
             break
         else:
-            print("\n[ERROR] Invalid choice. Please enter a number from 1 to 6.\n")
+            print("\n[ERROR] Invalid choice. Please enter a number from 1 to 7.\n")
 
 if __name__ == "__main__":
     # Check for required packages

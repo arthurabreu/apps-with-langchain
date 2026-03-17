@@ -1,0 +1,9 @@
+Generate a monthly sales analysis report with the following sections:
+1. Executive Summary
+2. Sales by Product Category (as table)
+3. Top 5 Performing Products
+4. Regional Performance Comparison
+5. Month-over-Month Growth Metrics
+6. Key Recommendations
+
+Include realistic sample data and format as structured JSON.

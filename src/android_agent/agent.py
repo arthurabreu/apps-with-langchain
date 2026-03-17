@@ -41,20 +41,20 @@ class AndroidAgent:
 {project_context}
 
 ## Rules
-- Output ONLY code files. No explanations, no prose.
-- For EACH file, use this EXACT format:
-
-FILE: <relative path from project root>
-```kotlin
-<file content>
-```
-
-- Use the correct package name from the project context above.
-- Create complete, compilable Kotlin files.
+- Output ONLY a single valid JSON object. No explanations, no prose.
+- The JSON keys must be the relative file paths from the project root.
+- The JSON values must be the complete, compilable Kotlin code for that file.
 - Use Jetpack Compose for UI.
+- Use the correct package name from the project context above.
 
 ## Task
 {task}
+
+## Response Format Example:
+{{
+  "app/src/main/java/com/example/MyFile.kt": "package com.example\n\nimport ...\n\nclass MyFile {{ ... }}",
+  "app/src/main/res/layout/activity_main.xml": "..."
+}}
 """
 
     def __init__(
@@ -160,7 +160,7 @@ FILE: <relative path from project root>
     def _run_hf_text_mode(
         self, chat_model, task, context, dev_context_section, guidelines_section
     ) -> None:
-        """Run using text generation + file parsing for HuggingFace models."""
+        """Run using text generation + JSON parsing for HuggingFace models."""
         prompt = self.HF_PROMPT.format(
             dev_context_section=dev_context_section,
             guidelines_section=guidelines_section,
@@ -168,7 +168,7 @@ FILE: <relative path from project root>
             task=task
         )
 
-        print("[INFO] Generating code with local model (text mode)...")
+        print("[INFO] Generating code with local model (JSON mode)...")
         print("[INFO] This may take a while depending on your hardware...\n")
 
         try:
@@ -187,7 +187,7 @@ FILE: <relative path from project root>
             print("[INFO] Generation complete. Parsing output...\n")
 
             # Parse and write files
-            files_written = self._parse_and_write_files(text)
+            files_written = self._parse_json_and_write_files(text)
 
             if files_written:
                 print(f"\n[SUCCESS] Written {files_written} file(s) to {self.project_root}")
@@ -201,66 +201,70 @@ FILE: <relative path from project root>
 
         print("\nJob Done")
 
-    def _parse_and_write_files(self, text: str) -> int:
+    def _parse_json_and_write_files(self, text: str) -> int:
         """
-        Parse model output for FILE: markers and code blocks, write to disk.
+        Parse model output for JSON mapping and write to disk.
 
         Expected format:
-            FILE: path/to/File.kt
-            ```kotlin
-            <code>
-            ```
+            {
+                "path/to/File.kt": "package ...\n\ncode"
+            }
 
         Returns:
             Number of files written
         """
-        # Pattern: FILE: <path> followed by a code block
-        pattern = r'FILE:\s*(.+?)\s*\n```\w*\n(.*?)```'
-        matches = re.findall(pattern, text, re.DOTALL)
+        import json
+        
+        # Try to find JSON block in the response
+        json_content = text.strip()
+        
+        # Clean up Markdown markers if present (some models still wrap in ```json)
+        if "```json" in json_content:
+            json_content = json_content.split("```json")[1].split("```")[0].strip()
+        elif "```" in json_content:
+            json_content = json_content.split("```")[1].split("```")[0].strip()
 
-        if not matches:
-            # Fallback: try to find any code blocks and infer filenames
-            code_pattern = r'```(?:kotlin|kt)\n(.*?)```'
-            code_matches = re.findall(code_pattern, text, re.DOTALL)
+        try:
+            data = json.loads(json_content)
+            if not isinstance(data, dict):
+                print(f"  [ERROR] Expected JSON object, got {type(data).__name__}")
+                return 0
+                
+            files_written = 0
+            for rel_path, content in data.items():
+                rel_path = rel_path.strip().strip('"').strip("'")
 
-            if code_matches:
-                # Try to extract package/class names to build paths
-                for i, code in enumerate(code_matches):
-                    path = self._infer_file_path(code, i)
-                    if path:
-                        matches.append((path, code))
-
-        files_written = 0
-        for rel_path, content in matches:
-            rel_path = rel_path.strip().strip('"').strip("'")
-
-            # Security: ensure path stays within project root
-            full_path = (self.project_root / rel_path).resolve()
-            try:
-                full_path.relative_to(self.project_root.resolve())
-            except ValueError:
-                print(f"  [SKIP] Path escapes project root: {rel_path}")
-                continue
-
-            full_path.parent.mkdir(parents=True, exist_ok=True)
-
-            # Smart merge if file exists
-            if full_path.exists():
-                existing = full_path.read_text(encoding="utf-8")
-                if content.strip() in existing:
-                    print(f"  [SKIP] {rel_path} — content already present")
+                # Security: ensure path stays within project root
+                full_path = (self.project_root / rel_path).resolve()
+                try:
+                    full_path.relative_to(self.project_root.resolve())
+                except ValueError:
+                    print(f"  [SKIP] Path escapes project root: {rel_path}")
                     continue
-                # Append new content
-                separator = "\n\n" if not existing.endswith("\n\n") else ""
-                full_path.write_text(existing + separator + content.strip() + "\n", encoding="utf-8")
-                print(f"  [MERGED] {rel_path}")
-            else:
-                full_path.write_text(content.strip() + "\n", encoding="utf-8")
-                print(f"  [CREATED] {rel_path}")
 
-            files_written += 1
+                full_path.parent.mkdir(parents=True, exist_ok=True)
 
-        return files_written
+                # Smart merge if file exists (appending extracted code)
+                if full_path.exists():
+                    existing = full_path.read_text(encoding="utf-8")
+                    if content.strip() in existing:
+                        print(f"  [SKIP] {rel_path} — content already present")
+                        continue
+                    # Append new content
+                    separator = "\n\n" if not existing.endswith("\n\n") else ""
+                    full_path.write_text(existing + separator + content.strip() + "\n", encoding="utf-8")
+                    print(f"  [MERGED] {rel_path}")
+                else:
+                    full_path.write_text(content.strip() + "\n", encoding="utf-8")
+                    print(f"  [CREATED] {rel_path}")
+
+                files_written += 1
+            
+            return files_written
+
+        except json.JSONDecodeError:
+            print("  [ERROR] Failed to decode JSON from model output.")
+            return 0
 
     def _infer_file_path(self, code: str, index: int) -> str:
         """

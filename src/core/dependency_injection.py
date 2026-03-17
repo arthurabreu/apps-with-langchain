@@ -4,12 +4,13 @@ Manages service creation and dependency resolution.
 """
 
 from typing import Dict, Any, TypeVar, Type, Optional
-from .interfaces import ITokenManager, IUserInteraction
+from .interfaces import ITokenManager, IUserInteraction, IFileExporter
 from .services import ConfigurationManager, ApiKeyValidator, ConsoleUserInteraction, LoggingService
 from .token_utils import TokenManager
 from .models.model_factory import ModelFactory
 from .prompt_manager import PromptManager
 from .cost_tracker import CostTracker
+from .exporters import ExcelExporter
 
 T = TypeVar('T')
 
@@ -35,6 +36,7 @@ class DIContainer:
         self.register_singleton(TokenManager, TokenManager)
         self.register_singleton(PromptManager, PromptManager)
         self.register_singleton(CostTracker, CostTracker)
+        self.register_singleton(ExcelExporter, ExcelExporter)
 
         # User interaction (depends on logging)
         self.register_factory(
@@ -119,6 +121,10 @@ class DIContainer:
     def get_cost_tracker(self) -> CostTracker:
         """Get cost tracker service."""
         return self.get(CostTracker)
+
+    def get_file_exporter(self) -> IFileExporter:
+        """Get file exporter service."""
+        return self.get(ExcelExporter)
 
 
 # Global container instance

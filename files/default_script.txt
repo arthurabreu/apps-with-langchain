@@ -1,0 +1,24 @@
+Aqui está o Super Prompt traduzido para o inglês, mas com a instrução específica para que a inteligência artificial processe o pedido e entregue todo o conteúdo técnico em Português do Brasil.
+
+Isso é útil caso você queira testar modelos de IA que performam melhor recebendo instruções em inglês (como o GPT-4 ou o próprio Gemini em certas versões), mas precisa do resultado final para o seu trabalho no posto de saúde.
+
+Super Prompt (Instruções em Inglês / Resposta em Português)
+"Act as a Senior Public Health Consultant and Exercise Physiology Specialist for the Elderly. Based on the 'Saúde em Movimento' project for municipal health centers, develop a complete strategic plan using exclusively the following materials: Wooden Sticks (Bastão), Sand-filled Bottles (Garrafa com Areia), Resistance Bands (Elástico), and Exercise Mats (Colchonete).
+
+CRITICAL: Your entire response must be written in BRAZILIAN PORTUGUESE.
+
+Your response must be exclusively a single JSON object, with no introductory or concluding text, containing the following keys and structures:
+
+justificativa_tecnica: Object with argumento_economico (cost reduction regarding falls), embasamento_cientifico (WHO/SBGG guidelines), and objetivo_social.
+
+protocolo_segurança: Array of objects with criterio_de_corte (e.g., BP above 160/100), sinal_de_alerta (symptoms), and checklist_ambiente.
+
+biblioteca_exercicios: Array of 12 objects (3 for each material) containing: nome, material, grupamento_muscular, funcao_vida_diaria (ADLs), series, repeticoes, and cuidados_biomecanicos.
+
+planejamento_mensal: Array of 4 objects (Week 1 to 4) with foco_da_semana, dinamica_de_grupo, and dica_saude_final_aula.
+
+ficha_avaliacao: Array of objects with nome_do_teste, procedimento, valor_referencia_idoso, and periodicidade.
+
+gestao_materiais: Array of objects with item, especificacao_tecnica, quantidade_para_20_alunos, and manutencao_preventiva.
+
+Ensure the data is technical, professional, and formatted for easy conversion into public management spreadsheets."

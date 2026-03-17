@@ -6,6 +6,7 @@ Uses local Hugging Face transformers library for inference.
 import logging
 import torch
 import os
+import psutil
 from typing import Dict, Any, Optional, Tuple
 from transformers import AutoTokenizer, AutoModelForCausalLM
 
@@ -39,6 +40,41 @@ def _select_device() -> Tuple[str, torch.dtype]:
         print(f"[INFO] No GPU detected: Using CPU (device: {device}, dtype: {dtype})")
 
     return device, dtype
+
+
+def _get_max_memory(fraction: float = 0.85) -> dict:
+    """
+    Calculate max_memory dict to cap GPU and CPU memory at fraction of available.
+
+    Args:
+        fraction: Fraction of total available memory to use (e.g., 0.85 = 85%)
+
+    Returns:
+        Dictionary suitable for HuggingFace transformers device_map="auto"
+    """
+    mem = {}
+    if torch.cuda.is_available():
+        for i in range(torch.cuda.device_count()):
+            total = torch.cuda.get_device_properties(i).total_memory
+            mem[i] = f"{int(total * fraction / (1024**2))}MiB"
+    ram = psutil.virtual_memory().total
+    mem["cpu"] = f"{int(ram * fraction / (1024**2))}MiB"
+    return mem
+
+
+def _build_bnb_config():
+    """Build BitsAndBytesConfig for 4-bit quantization."""
+    try:
+        from transformers import BitsAndBytesConfig
+    except ImportError:
+        raise ValueError("transformers>=4.30 required for BitsAndBytesConfig")
+
+    return BitsAndBytesConfig(
+        load_in_4bit=True,
+        bnb_4bit_quant_type="nf4",
+        bnb_4bit_use_double_quant=True,
+        bnb_4bit_compute_dtype=torch.bfloat16,
+    )
 
 
 class MiniMaxModel(ILanguageModel):
@@ -98,7 +134,12 @@ class MiniMaxModel(ILanguageModel):
         """Initialize the model, tokenizer, and device."""
         try:
             self.logger.info(f"Initializing MiniMax model: {self.config.model_name}")
-            
+
+            # Limit CPU thread usage to 85% of available cores
+            cpu_threads = max(1, int(os.cpu_count() * 0.85))
+            torch.set_num_threads(cpu_threads)
+            self.logger.info(f"CPU threads limited to {cpu_threads}/{os.cpu_count()}")
+
             # Select device and dtype
             self._device, self._dtype = _select_device()
             
@@ -123,11 +164,18 @@ class MiniMaxModel(ILanguageModel):
             
             # Load model with device-specific configuration
             if self._device == "cuda":
-                # For CUDA: use device_map="auto" to distribute across available GPUs
+                # For CUDA: use device_map="auto" with 4-bit quantization and memory limits
+                self.logger.info("Applying 4-bit quantization to reduce VRAM usage...")
+                bnb_config = _build_bnb_config()
+                max_mem = _get_max_memory(fraction=0.85)
+                self.logger.info(f"Memory limits: {max_mem}")
+
                 self._model = AutoModelForCausalLM.from_pretrained(
                     self.config.model_name,
                     torch_dtype=self._dtype,
                     device_map="auto",
+                    quantization_config=bnb_config,
+                    max_memory=max_mem,
                     trust_remote_code=True,
                     token=hf_token
                 )
