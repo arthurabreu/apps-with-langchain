@@ -164,24 +164,42 @@ class MiniMaxModel(ILanguageModel):
             
             # Load model with device-specific configuration
             if self._device == "cuda":
-                # For CUDA: use device_map="auto" with 4-bit quantization and memory limits
-                self.logger.info("Applying 4-bit quantization to reduce VRAM usage...")
-                bnb_config = _build_bnb_config()
-
                 # Use 90% of VRAM to allow larger models with CPU offloading
                 max_mem = _get_max_memory(fraction=0.90)
                 self.logger.info(f"Memory limits: {max_mem}")
                 self.logger.info("Large models will offload to CPU if needed (slower but works)")
 
-                self._model = AutoModelForCausalLM.from_pretrained(
-                    self.config.model_name,
-                    torch_dtype=self._dtype,
-                    device_map="auto",
-                    quantization_config=bnb_config,
-                    max_memory=max_mem,
-                    trust_remote_code=True,
-                    token=hf_token
-                )
+                # Try loading with 4-bit quantization first
+                try:
+                    self.logger.info("Applying 4-bit quantization to reduce VRAM usage...")
+                    bnb_config = _build_bnb_config()
+
+                    self._model = AutoModelForCausalLM.from_pretrained(
+                        self.config.model_name,
+                        torch_dtype=self._dtype,
+                        device_map="auto",
+                        quantization_config=bnb_config,
+                        max_memory=max_mem,
+                        trust_remote_code=True,
+                        token=hf_token
+                    )
+                except ValueError as e:
+                    # 4-bit quantization failed (likely model too large for GPU offloading)
+                    # Fall back to unquantized with CPU offloading
+                    if "dispatched on the CPU or the disk" in str(e):
+                        self.logger.warning("4-bit quantization incompatible with CPU offloading. Falling back to unquantized model with float16.")
+                        self.logger.warning("This may use more VRAM but will work with CPU offloading.")
+
+                        self._model = AutoModelForCausalLM.from_pretrained(
+                            self.config.model_name,
+                            torch_dtype=self._dtype,  # float16 or bfloat16
+                            device_map="auto",
+                            max_memory=max_mem,
+                            trust_remote_code=True,
+                            token=hf_token
+                        )
+                    else:
+                        raise
             elif self._device == "mps":
                 # For MPS: don't use device_map, load normally then move to device
                 self._model = AutoModelForCausalLM.from_pretrained(

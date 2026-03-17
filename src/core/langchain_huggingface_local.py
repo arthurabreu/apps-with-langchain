@@ -200,21 +200,39 @@ class LocalHuggingFaceModel:
 
             # Load model with device-specific configuration
             if device == "cuda":
-                # For CUDA: use device_map="auto" with 4-bit quantization and memory limits
-                print("[INFO] Applying 4-bit quantization to reduce VRAM usage...")
-                bnb_config = _build_bnb_config()
                 max_mem = _get_max_memory(fraction=0.90)
                 print(f"[INFO] Memory limits: {max_mem}")
                 print("[INFO] Large models will offload to CPU if needed (slower but works)")
 
-                self._model = AutoModelForCausalLM.from_pretrained(
-                    actual_model_id,
-                    torch_dtype=dtype,
-                    device_map="auto",
-                    quantization_config=bnb_config,
-                    max_memory=max_mem,
-                    token=os.getenv("HUGGINGFACE_API_KEY")
-                )
+                # Try loading with 4-bit quantization first
+                try:
+                    print("[INFO] Applying 4-bit quantization to reduce VRAM usage...")
+                    bnb_config = _build_bnb_config()
+
+                    self._model = AutoModelForCausalLM.from_pretrained(
+                        actual_model_id,
+                        torch_dtype=dtype,
+                        device_map="auto",
+                        quantization_config=bnb_config,
+                        max_memory=max_mem,
+                        token=os.getenv("HUGGINGFACE_API_KEY")
+                    )
+                except ValueError as e:
+                    # 4-bit quantization failed (likely model too large for GPU offloading)
+                    # Fall back to unquantized with CPU offloading
+                    if "dispatched on the CPU or the disk" in str(e):
+                        print("[WARNING] 4-bit quantization incompatible with CPU offloading. Falling back to unquantized model with float16.")
+                        print("[WARNING] This may use more VRAM but will work with CPU offloading.")
+
+                        self._model = AutoModelForCausalLM.from_pretrained(
+                            actual_model_id,
+                            torch_dtype=dtype,
+                            device_map="auto",
+                            max_memory=max_mem,
+                            token=os.getenv("HUGGINGFACE_API_KEY")
+                        )
+                    else:
+                        raise
             elif device == "mps":
                 # For MPS: don't use device_map, load normally then move to device
                 self._model = AutoModelForCausalLM.from_pretrained(
