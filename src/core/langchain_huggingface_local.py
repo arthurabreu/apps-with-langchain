@@ -222,12 +222,17 @@ class LocalHuggingFaceModel:
                         max_memory=max_mem,
                         token=os.getenv("HUGGINGFACE_API_KEY")
                     )
-                except ValueError as e:
-                    # 4-bit quantization failed (likely model too large for GPU offloading)
-                    # Fall back to unquantized with CPU offloading
-                    if "dispatched on the CPU or the disk" in str(e):
-                        print("[WARNING] 4-bit quantization incompatible with CPU offloading. Falling back to unquantized model with float16.")
-                        print("[WARNING] This may use more VRAM but will work with CPU offloading.")
+                except (ValueError, RuntimeError) as e:
+                    # 4-bit quantization failed - could be:
+                    # 1. Model too large for GPU with offloading ("dispatched on the CPU")
+                    # 2. OOM during quantization loading
+                    error_msg = str(e).lower()
+                    if "out of memory" in error_msg or "dispatched on the cpu or the disk" in error_msg:
+                        print(f"[WARNING] 4-bit quantization failed: {e}")
+                        print("[WARNING] Falling back to unquantized float16 (may use more VRAM but will work).")
+
+                        # Clear GPU cache before retry
+                        torch.cuda.empty_cache()
 
                         self._model = AutoModelForCausalLM.from_pretrained(
                             actual_model_id,

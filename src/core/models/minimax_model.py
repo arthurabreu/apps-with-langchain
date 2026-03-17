@@ -188,12 +188,17 @@ class MiniMaxModel(ILanguageModel):
                         trust_remote_code=True,
                         token=hf_token
                     )
-                except ValueError as e:
-                    # 4-bit quantization failed (likely model too large for GPU offloading)
-                    # Fall back to unquantized with CPU offloading
-                    if "dispatched on the CPU or the disk" in str(e):
-                        self.logger.warning("4-bit quantization incompatible with CPU offloading. Falling back to unquantized model with float16.")
-                        self.logger.warning("This may use more VRAM but will work with CPU offloading.")
+                except (ValueError, RuntimeError) as e:
+                    # 4-bit quantization failed - could be:
+                    # 1. Model too large for GPU with offloading ("dispatched on the CPU")
+                    # 2. OOM during quantization loading
+                    error_msg = str(e).lower()
+                    if "out of memory" in error_msg or "dispatched on the cpu or the disk" in error_msg:
+                        self.logger.warning(f"4-bit quantization failed: {e}")
+                        self.logger.warning("Falling back to unquantized float16 (may use more VRAM but will work).")
+
+                        # Clear GPU cache before retry
+                        torch.cuda.empty_cache()
 
                         self._model = AutoModelForCausalLM.from_pretrained(
                             self.config.model_name,
