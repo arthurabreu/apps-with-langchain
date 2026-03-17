@@ -323,13 +323,15 @@ class MiniMaxModel(ILanguageModel):
             outputs = self._model.generate(
                 **inputs,
                 max_new_tokens=max_new_tokens,
+                min_new_tokens=10,
                 temperature=self.config.temperature,
-                do_sample=True
+                do_sample=True,
+                repetition_penalty=1.1,
             )
 
-            # Decode the response (skip the input tokens)
+            # Decode the response (skip the input tokens), strip special tokens
             response_tokens = outputs[0][inputs["input_ids"].shape[-1]:]
-            generated_text = self._tokenizer.decode(response_tokens)
+            generated_text = self._tokenizer.decode(response_tokens, skip_special_tokens=True).strip()
 
             self.logger.info(f"Generated {len(response_tokens)} tokens")
             self.user_interaction.display_info("[SUCCESS] Response generated!")

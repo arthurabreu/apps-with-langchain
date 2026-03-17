@@ -82,5 +82,19 @@
     "tokens_used": 513,
     "estimated_cost": 0.0,
     "operation_type": "prompt"
+  },
+  {
+    "timestamp": "2026-03-17T10:34:40.926869-03:00",
+    "model": "/home/arthurabreu/HuggingFaceModels/gemma-7b",
+    "tokens_used": 508,
+    "estimated_cost": 0.0,
+    "operation_type": "prompt"
+  },
+  {
+    "timestamp": "2026-03-17T10:34:45.766129-03:00",
+    "model": "/home/arthurabreu/HuggingFaceModels/gemma-7b",
+    "tokens_used": 1,
+    "estimated_cost": 0.0,
+    "operation_type": "response"
   }
 ]

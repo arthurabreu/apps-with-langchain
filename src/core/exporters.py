@@ -53,9 +53,18 @@ class ExcelExporter(IFileExporter):
             return False
 
     def _read_json(self, file_path: str) -> Any:
-        """Read JSON file content."""
+        """Read JSON file content, with fallback for empty or invalid JSON."""
         with open(file_path, 'r', encoding='utf-8') as f:
-            return json.load(f)
+            content = f.read().strip()
+
+        if not content:
+            raise ValueError("Model returned an empty response. The model may not support instruction-following (try an instruct/chat variant of the model).")
+
+        try:
+            return json.loads(content)
+        except json.JSONDecodeError:
+            # Response is not JSON — treat as plain text so export still works
+            return content
 
     def _read_text(self, file_path: str) -> str:
         """Read text or markdown file content."""
