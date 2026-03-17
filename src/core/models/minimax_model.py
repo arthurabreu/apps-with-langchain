@@ -279,14 +279,24 @@ class MiniMaxModel(ILanguageModel):
                 {"role": "user", "content": prompt},
             ]
 
-            # Apply chat template
-            inputs = self._tokenizer.apply_chat_template(
-                messages,
-                add_generation_prompt=True,
-                tokenize=True,
-                return_dict=True,
-                return_tensors="pt",
-            ).to(self._model.device if hasattr(self._model, 'device') else self._device)
+            # Apply chat template if available, otherwise fall back to plain text tokenization
+            target_device = self._model.device if hasattr(self._model, 'device') else self._device
+            if self._tokenizer.chat_template:
+                inputs = self._tokenizer.apply_chat_template(
+                    messages,
+                    add_generation_prompt=True,
+                    tokenize=True,
+                    return_dict=True,
+                    return_tensors="pt",
+                ).to(target_device)
+            else:
+                # No chat template (e.g. gemma-7b base model) — tokenize plain text
+                self.logger.info("No chat template found, using plain text tokenization.")
+                inputs = self._tokenizer(
+                    prompt,
+                    return_tensors="pt",
+                    return_attention_mask=True,
+                ).to(target_device)
 
             # Count prompt tokens
             prompt_tokens = inputs["input_ids"].shape[-1]
