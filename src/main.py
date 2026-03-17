@@ -248,61 +248,54 @@ def download_hf_model(model_id: str) -> bool:
 
 def select_huggingface_model() -> str:
     """
-    Let user select which HuggingFace model to test.
+    Let user select which HuggingFace model to test from local folder.
 
     Returns:
         Model ID string or None if user cancels
     """
+    from core.hf_model_manager import get_hf_models_folder, get_model_folder_size
+    from pathlib import Path
+
     print("\n" + "=" * 60)
     print("Select HuggingFace Model to Test")
     print("=" * 60)
 
-    # Predefined models
-    models = {
-        "1": {
-            "id": "MiniMaxAI/MiniMax-M2.1",
-            "description": "MiniMax-M2.1 (229B parameters, high quality)",
-            "size": "~450GB (full), ~60GB (FP8 quantized)"
-        },
-        "2": {
-            "id": "mistralai/Mistral-7B-v0.1",
-            "description": "Mistral 7B (7B parameters, fast)",
-            "size": "~14GB"
-        },
-        "3": {
-            "id": "meta-llama/Llama-2-7b",
-            "description": "Llama 2 7B (7B parameters)",
-            "size": "~14GB"
-        },
-        "4": {
-            "id": "custom",
-            "description": "Enter custom HuggingFace model ID",
-            "size": "Varies"
-        }
-    }
+    # Get local models from folder
+    hf_models_folder = get_hf_models_folder()
+    local_models = []
 
-    print("\nAvailable models:")
-    for key, model in models.items():
-        cached = check_model_cached_locally(model["id"]) if model["id"] != "custom" else False
-        cached_status = " ✓ (cached locally)" if cached else ""
-        print(f"{key}. {model['description']}{cached_status}")
-        print(f"   Size: {model['size']}")
-        print()
+    if hf_models_folder.exists():
+        for item in sorted(hf_models_folder.iterdir()):
+            if item.is_dir() and any(item.iterdir()) and not item.name.startswith('.'):
+                local_models.append(item)
 
-    choice = input("Enter your choice (1-4): ").strip()
+    if not local_models:
+        print("[INFO] No local models found in folder.")
+        return None
 
-    if choice in models:
-        if choice == "4":
+    print("\nLocal models found:")
+    for idx, folder in enumerate(local_models, 1):
+        size = get_model_folder_size(folder)
+        print(f"{idx}. {folder.name} ({size})")
+
+    print(f"{len(local_models) + 1}. Enter custom HuggingFace model ID")
+    print()
+
+    choice = input(f"Select model [1-{len(local_models) + 1}]: ").strip()
+
+    try:
+        choice_idx = int(choice) - 1
+        if 0 <= choice_idx < len(local_models):
+            return local_models[choice_idx].name
+        elif choice_idx == len(local_models):
             # Custom model
             model_id = input("\nEnter HuggingFace model ID (e.g., 'username/model-name'): ").strip()
-            if not model_id:
-                print("[ERROR] No model ID provided.")
-                return None
-            return model_id
+            return model_id if model_id else None
         else:
-            return models[choice]["id"]
-    else:
-        print("[ERROR] Invalid choice.")
+            print("[ERROR] Invalid choice.")
+            return None
+    except ValueError:
+        print("[ERROR] Please enter a number.")
         return None
 
 

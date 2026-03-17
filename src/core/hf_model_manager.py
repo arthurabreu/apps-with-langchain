@@ -242,11 +242,11 @@ def select_hf_model() -> Optional[Tuple[str, Path]]:
     print(f"\n[INFO] Models folder: {hf_models_folder}")
     print()
 
-    # Collect local folders from the models directory
+    # Collect local folders from the models directory (skip hidden folders starting with .)
     local_folders = []
     if hf_models_folder.exists():
         for item in hf_models_folder.iterdir():
-            if item.is_dir() and any(item.iterdir()):
+            if item.is_dir() and any(item.iterdir()) and not item.name.startswith('.'):
                 local_folders.append(item)
 
     # Build selection list with only local models
