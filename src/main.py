@@ -1122,6 +1122,42 @@ def run_android_agent():
         print(f"[ERROR] Failed to launch Android agent: {e}")
 
 
+def _convert_default_json_to_excel():
+    """Convert default_json_for_excel_convertion.json directly to Excel, no LLM needed."""
+    from core.dependency_injection import get_container
+    from core.services import get_brazil_time
+    from pathlib import Path
+
+    default_json = Path(project_root) / "default_json_for_excel_convertion.json"
+
+    if not default_json.exists():
+        print(f"\n[ERROR] File not found: {default_json}")
+        print("Create the file and paste your JSON into it, then run this option again.")
+        return
+
+    print(f"\n✓ Found: {default_json}")
+
+    responses_dir = Path(RESPONSES_DIR) / "excel_exports"
+    responses_dir.mkdir(parents=True, exist_ok=True)
+
+    brazil_time = get_brazil_time()
+    timestamp = brazil_time.strftime("%Y%m%d_%H%M%S")
+    output_filepath = responses_dir / f"json_report_{timestamp}.xlsx"
+
+    print(f"[INFO] Exporting to Excel: {output_filepath}...")
+    container = get_container()
+    exporter = container.get_file_exporter()
+
+    success = exporter.export_to_excel(str(default_json), str(output_filepath))
+
+    if success:
+        print(f"✅ SUCCESS! Your report is ready at: {output_filepath}")
+        size = os.path.getsize(output_filepath)
+        print(f"   File size: {size / 1024:.2f} KB")
+    else:
+        print("❌ FAILED to export to Excel. Check logs for details.")
+
+
 def run_hf_to_excel_agent():
     """
     Launch the LLM to Excel Agent using local Hugging Face models.
@@ -1158,8 +1194,14 @@ def run_hf_to_excel_agent():
         print("\n📄 Select Response Format:")
         print("1. JSON (Recommended - Best for table structure in Excel) [DEFAULT]")
         print("2. Plain Text / Markdown")
-        format_choice = input("Select [1 or 2, default=1]: ").strip()
-        
+        print("3. Convert existing JSON file to Excel (no LLM needed)")
+        format_choice = input("Select [1, 2 or 3, default=1]: ").strip()
+
+        # Option 3: direct JSON → Excel, no LLM involved
+        if format_choice == "3":
+            _convert_default_json_to_excel()
+            return
+
         is_json = format_choice != "2"
         if is_json:
             task += "\n\nIMPORTANT: Return ONLY a valid JSON object or a list of objects. No other text."
@@ -1170,7 +1212,7 @@ def run_hf_to_excel_agent():
         # 4. Initialize and run model
         container = get_container()
         factory = container.get_model_factory()
-        
+
         config = ModelConfig(
             model_name=str(model_folder),
             temperature=0.7,
@@ -1179,10 +1221,10 @@ def run_hf_to_excel_agent():
 
         print("\n[INFO] Initializing model...")
         model = factory.create_model("huggingface", config)
-        
+
         print("\n[INFO] Generating response...")
         gen_result = model.generate(task, skip_prompt=True)
-        
+
         content = gen_result.content.strip()
         print(f"\nResponse received ({len(content)} characters).")
 
@@ -1197,21 +1239,20 @@ def run_hf_to_excel_agent():
 
         with open(input_filepath, "w", encoding="utf-8") as f:
             f.write(content)
-        
+
         print(f"✓ Response saved to: {input_filepath}")
 
         # 6. Export to Excel
         output_filename = f"llm_report_{timestamp}.xlsx"
         output_filepath = responses_dir / output_filename
-        
+
         print(f"\n[INFO] Exporting to Excel: {output_filepath}...")
         exporter = container.get_file_exporter()
-        
+
         success = exporter.export_to_excel(str(input_filepath), str(output_filepath))
-        
+
         if success:
             print(f"✅ SUCCESS! Your report is ready at: {output_filepath}")
-            # Show size
             size = os.path.getsize(output_filepath)
             print(f"   File size: {size / 1024:.2f} KB")
         else:
@@ -1368,15 +1409,16 @@ def main():
         print("\n⭐ FEATURED:")
         print("1. Android Code-Gen Agent")
         print("2. LLM to Excel Agent")
+        print("3. JSON to Excel (no LLM - paste your JSON in default_json_for_excel_convertion.json)")
         print("\n📚 TESTING & LEARNING:")
-        print("3. Model Testing & Evaluation")
-        print("4. Learning & Examples")
+        print("4. Model Testing & Evaluation")
+        print("5. Learning & Examples")
         print("\n📊 ADVANCED:")
-        print("5. Context & Benchmarking")
-        print("6. System & Maintenance")
-        print("\n7. Exit\n")
+        print("6. Context & Benchmarking")
+        print("7. System & Maintenance")
+        print("\n8. Exit\n")
 
-        choice = input("Enter your choice (1-7): ").strip()
+        choice = input("Enter your choice (1-8): ").strip()
 
         if choice == "1":
             print()
@@ -1387,24 +1429,28 @@ def main():
             run_hf_to_excel_agent()
             print()
         elif choice == "3":
-            model_testing_menu()
+            print()
+            _convert_default_json_to_excel()
             print()
         elif choice == "4":
-            learning_menu()
+            model_testing_menu()
             print()
         elif choice == "5":
-            context_benchmarking_menu()
+            learning_menu()
             print()
         elif choice == "6":
-            system_maintenance_menu()
+            context_benchmarking_menu()
             print()
         elif choice == "7":
+            system_maintenance_menu()
+            print()
+        elif choice == "8":
             print("\nThank you for using the LangChain Model Testing Lab!")
             print("All memory will be freed when you close this application.")
             print("Goodbye!")
             break
         else:
-            print("\n[ERROR] Invalid choice. Please enter a number from 1 to 7.\n")
+            print("\n[ERROR] Invalid choice. Please enter a number from 1 to 8.\n")
 
 if __name__ == "__main__":
     # Check for required packages

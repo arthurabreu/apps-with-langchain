@@ -8,6 +8,8 @@ import logging
 import torch
 import os
 import psutil
+import sys
+import time
 from typing import Dict, Any, Optional, Tuple
 from transformers import AutoTokenizer, AutoModelForCausalLM
 
@@ -84,6 +86,39 @@ def _build_bnb_config():
         bnb_4bit_use_double_quant=True,
         bnb_4bit_compute_dtype=torch.bfloat16,
     )
+
+
+class GenerationProgressTracker:
+    """Track and display generation progress in real-time."""
+
+    def __init__(self, max_tokens: int, user_interaction):
+        self.max_tokens = max_tokens
+        self.user_interaction = user_interaction
+        self.start_time = time.time()
+        self.tokens_generated = 0
+        self.last_update = 0
+
+    def update(self, tokens_generated: int):
+        """Update progress and display if enough time has passed."""
+        self.tokens_generated = tokens_generated
+        current_time = time.time()
+
+        # Update every 2 seconds or at end
+        if current_time - self.last_update >= 2.0 or tokens_generated >= self.max_tokens:
+            elapsed = current_time - self.start_time
+            progress = min(100, (tokens_generated / self.max_tokens) * 100)
+
+            # Calculate tokens/sec and ETA
+            if elapsed > 0:
+                tokens_per_sec = tokens_generated / elapsed
+                remaining_tokens = max(0, self.max_tokens - tokens_generated)
+                eta_sec = remaining_tokens / tokens_per_sec if tokens_per_sec > 0 else 0
+
+                progress_bar = "█" * int(progress / 5) + "░" * (20 - int(progress / 5))
+                msg = f"[PROGRESS] {progress_bar} {progress:.0f}% | {tokens_generated}/{self.max_tokens} tokens | {tokens_per_sec:.1f} tok/s | ETA: {int(eta_sec)}s"
+                self.user_interaction.display_info(msg)
+
+            self.last_update = current_time
 
 
 class MiniMaxModel(ILanguageModel):
@@ -320,26 +355,54 @@ class MiniMaxModel(ILanguageModel):
                 max_new_tokens = min(max_new_tokens, 512)
                 self.logger.warning(f"Capping max_tokens to 512 for large model ({total_params/1e9:.1f}B) to avoid OOM during generation")
 
-            outputs = self._model.generate(
-                **inputs,
-                max_new_tokens=max_new_tokens,
-                min_new_tokens=10,
-                temperature=self.config.temperature,
-                do_sample=True,
-                repetition_penalty=1.1,
+            # Use streaming to track progress in real-time
+            from transformers import TextIteratorStreamer
+            from threading import Thread
+
+            progress_tracker = GenerationProgressTracker(max_new_tokens, self.user_interaction)
+
+            # Create a streamer to capture tokens as they're generated
+            # skip_prompt=True ensures the input prompt is NOT included in the output
+            streamer = TextIteratorStreamer(
+                self._tokenizer,
+                skip_prompt=True,
+                skip_special_tokens=True,
+                timeout=300.0,  # 5-minute timeout
             )
 
-            # Decode the response (skip the input tokens), strip special tokens
-            response_tokens = outputs[0][inputs["input_ids"].shape[-1]:]
-            generated_text = self._tokenizer.decode(response_tokens, skip_special_tokens=True).strip()
+            # Generate in a thread so we can track progress
+            generation_kwargs = {
+                **inputs,
+                "max_new_tokens": max_new_tokens,
+                "min_new_tokens": 10,
+                "temperature": self.config.temperature,
+                "do_sample": True,
+                "repetition_penalty": 1.1,
+                "streamer": streamer,
+            }
 
-            self.logger.info(f"Generated {len(response_tokens)} tokens")
+            gen_thread = Thread(target=self._model.generate, kwargs=generation_kwargs)
+            gen_thread.start()
+
+            # Collect output while tracking progress
+            generated_text = ""
+            tokens_count = 0
+            for new_text in streamer:
+                generated_text += new_text
+                # Rough token count based on text length
+                tokens_count = len(self._tokenizer.encode(generated_text)) - prompt_tokens
+                progress_tracker.update(tokens_count)
+
+            gen_thread.join()
+            response_tokens_count = tokens_count
+
+            self.logger.info(f"Generated {response_tokens_count} tokens")
             self.user_interaction.display_info("[SUCCESS] Response generated!")
 
             # Log token usage for output
             self.token_manager.log_usage(
                 self.config.model_name,
-                len(response_tokens),
+                response_tokens_count,
                 "response",
                 is_output=True
             )
@@ -349,7 +412,7 @@ class MiniMaxModel(ILanguageModel):
 
             return GenerationResult(
                 content=generated_text,
-                tokens_used=len(response_tokens),
+                tokens_used=response_tokens_count,
                 cost=usage_summary.get('total_cost', 0.0),
                 metadata={
                     "provider": self.provider,
@@ -357,8 +420,8 @@ class MiniMaxModel(ILanguageModel):
                     "device": self._device,
                     "dtype": str(self._dtype),
                     "prompt_tokens": prompt_tokens,
-                    "response_tokens": len(response_tokens),
-                    "total_tokens": prompt_tokens + len(response_tokens),
+                    "response_tokens": response_tokens_count,
+                    "total_tokens": prompt_tokens + response_tokens_count,
                 }
             )
 
