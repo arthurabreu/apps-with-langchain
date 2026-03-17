@@ -3,12 +3,16 @@ Module for working with local Hugging Face models in LangChain.
 Focuses on educational aspects and proper error handling.
 """
 
+import gc
 import os
 import torch
 import threading
 import time
 import sys
 import psutil
+
+# Allow non-contiguous CUDA memory allocation — prevents OOM from fragmentation
+os.environ.setdefault("PYTORCH_CUDA_ALLOC_CONF", "expandable_segments:True")
 from transformers import AutoTokenizer, AutoModelForCausalLM, pipeline
 from typing import Optional, Dict, Any, Tuple
 
@@ -223,16 +227,22 @@ class LocalHuggingFaceModel:
                         token=os.getenv("HUGGINGFACE_API_KEY")
                     )
                 except (ValueError, RuntimeError) as e:
-                    # 4-bit quantization failed - could be:
-                    # 1. Model too large for GPU with offloading ("dispatched on the CPU")
-                    # 2. OOM during quantization loading
                     error_msg = str(e).lower()
                     if "out of memory" in error_msg or "dispatched on the cpu or the disk" in error_msg:
                         print(f"[WARNING] 4-bit quantization failed: {e}")
-                        print("[WARNING] Falling back to unquantized float16 (may use more VRAM but will work).")
+                        print("[WARNING] Doing full GPU cleanup before fallback...")
 
-                        # Clear GPU cache before retry
+                        # Full cleanup before retry
+                        if self._model is not None:
+                            del self._model
+                            self._model = None
+                        gc.collect()
                         torch.cuda.empty_cache()
+                        torch.cuda.reset_peak_memory_stats()
+
+                        # Recalculate max_memory AFTER cleanup
+                        max_mem = _get_max_memory(fraction=0.75)
+                        print(f"[WARNING] Falling back to unquantized float16. Memory after cleanup: {max_mem}")
 
                         self._model = AutoModelForCausalLM.from_pretrained(
                             actual_model_id,

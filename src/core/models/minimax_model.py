@@ -3,12 +3,16 @@ MiniMax-M2.1 model implementation following SOLID principles.
 Uses local Hugging Face transformers library for inference.
 """
 
+import gc
 import logging
 import torch
 import os
 import psutil
 from typing import Dict, Any, Optional, Tuple
 from transformers import AutoTokenizer, AutoModelForCausalLM
+
+# Allow non-contiguous CUDA memory allocation — prevents OOM from fragmentation
+os.environ.setdefault("PYTORCH_CUDA_ALLOC_CONF", "expandable_segments:True")
 
 from ..interfaces import ILanguageModel, ITokenManager, IUserInteraction, ModelConfig, GenerationResult
 from ..exceptions import ModelConfigurationError, GenerationError
@@ -189,20 +193,26 @@ class MiniMaxModel(ILanguageModel):
                         token=hf_token
                     )
                 except (ValueError, RuntimeError) as e:
-                    # 4-bit quantization failed - could be:
-                    # 1. Model too large for GPU with offloading ("dispatched on the CPU")
-                    # 2. OOM during quantization loading
                     error_msg = str(e).lower()
                     if "out of memory" in error_msg or "dispatched on the cpu or the disk" in error_msg:
                         self.logger.warning(f"4-bit quantization failed: {e}")
-                        self.logger.warning("Falling back to unquantized float16 (may use more VRAM but will work).")
+                        self.logger.warning("Doing full GPU cleanup before fallback...")
 
-                        # Clear GPU cache before retry
+                        # Full cleanup: delete any partial model, collect garbage, clear GPU cache
+                        if self._model is not None:
+                            del self._model
+                            self._model = None
+                        gc.collect()
                         torch.cuda.empty_cache()
+                        torch.cuda.reset_peak_memory_stats()
+
+                        # Recalculate max_memory AFTER cleanup (state has changed)
+                        max_mem = _get_max_memory(fraction=0.75)
+                        self.logger.warning(f"Fallback to unquantized float16. Memory after cleanup: {max_mem}")
 
                         self._model = AutoModelForCausalLM.from_pretrained(
                             self.config.model_name,
-                            torch_dtype=self._dtype,  # float16 or bfloat16
+                            torch_dtype=self._dtype,
                             device_map="auto",
                             max_memory=max_mem,
                             trust_remote_code=True,
