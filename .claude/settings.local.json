@@ -17,7 +17,8 @@
       "Bash(python -m py_compile src/android_agent/provider_factory.py src/core/langchain_huggingface_local.py src/core/models/minimax_model.py src/core/hf_model_manager.py src/main.py)",
       "Bash(python3 -m py_compile src/android_agent/provider_factory.py src/core/langchain_huggingface_local.py src/core/models/minimax_model.py src/core/hf_model_manager.py src/main.py)",
       "Bash(git commit:*)",
-      "Bash(python3 -m py_compile src/android_agent/provider_factory.py)"
+      "Bash(python3 -m py_compile src/android_agent/provider_factory.py)",
+      "Bash(python3:*)"
     ]
   }
 }

@@ -178,9 +178,10 @@ def build_hf_chat_model(
         # 4-bit quantization config
         bnb_config = _build_bnb_config()
 
-        # Memory limits at 85% of available VRAM and RAM
-        max_mem = _get_max_memory(fraction=0.85)
+        # Memory limits at 90% of available VRAM and RAM (allows larger models with CPU offloading)
+        max_mem = _get_max_memory(fraction=0.90)
         print(f"[INFO] Memory limits: {max_mem}")
+        print("[INFO] Large models will offload to CPU if needed (slower but works)")
 
         # Load model with quantization and memory limits
         print("[INFO] Loading model with GPU acceleration...")

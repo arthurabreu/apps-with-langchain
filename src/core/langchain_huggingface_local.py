@@ -203,8 +203,9 @@ class LocalHuggingFaceModel:
                 # For CUDA: use device_map="auto" with 4-bit quantization and memory limits
                 print("[INFO] Applying 4-bit quantization to reduce VRAM usage...")
                 bnb_config = _build_bnb_config()
-                max_mem = _get_max_memory(fraction=0.85)
+                max_mem = _get_max_memory(fraction=0.90)
                 print(f"[INFO] Memory limits: {max_mem}")
+                print("[INFO] Large models will offload to CPU if needed (slower but works)")
 
                 self._model = AutoModelForCausalLM.from_pretrained(
                     actual_model_id,

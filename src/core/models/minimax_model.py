@@ -167,8 +167,11 @@ class MiniMaxModel(ILanguageModel):
                 # For CUDA: use device_map="auto" with 4-bit quantization and memory limits
                 self.logger.info("Applying 4-bit quantization to reduce VRAM usage...")
                 bnb_config = _build_bnb_config()
-                max_mem = _get_max_memory(fraction=0.85)
+
+                # Use 90% of VRAM to allow larger models with CPU offloading
+                max_mem = _get_max_memory(fraction=0.90)
                 self.logger.info(f"Memory limits: {max_mem}")
+                self.logger.info("Large models will offload to CPU if needed (slower but works)")
 
                 self._model = AutoModelForCausalLM.from_pretrained(
                     self.config.model_name,
