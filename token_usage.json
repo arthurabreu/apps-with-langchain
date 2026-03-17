@@ -96,5 +96,12 @@
     "tokens_used": 1,
     "estimated_cost": 0.0,
     "operation_type": "response"
+  },
+  {
+    "timestamp": "2026-03-17T10:37:31.795733-03:00",
+    "model": "/home/arthurabreu/HuggingFaceModels/Qwen3-5-27B-Claude-4-6-Opus-Reasoning-Distilled",
+    "tokens_used": 513,
+    "estimated_cost": 0.0,
+    "operation_type": "prompt"
   }
 ]

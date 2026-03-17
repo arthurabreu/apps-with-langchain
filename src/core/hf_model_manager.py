@@ -115,6 +115,40 @@ def get_model_size(model_id: str, hf_token: Optional[str] = None) -> Optional[st
         return None
 
 
+def resolve_model_path(folder: Path) -> Path:
+    """
+    Resolve the actual model path inside a folder.
+    Handles nested structures like:
+    - org/model/  (e.g. mistralai/Mistral-7B-Instruct)
+    - model/snapshots/hash/  (HuggingFace cache structure)
+    - model/  (flat structure)
+
+    Returns the deepest folder that contains model files (config.json or tokenizer_config.json).
+    """
+    model_markers = {"config.json", "tokenizer_config.json", "model.safetensors", "pytorch_model.bin"}
+
+    def has_model_files(path: Path) -> bool:
+        return any((path / marker).exists() for marker in model_markers)
+
+    # Direct hit
+    if has_model_files(folder):
+        return folder
+
+    # Check one level deep (e.g. mistralai/Mistral-7B-Instruct)
+    for child in sorted(folder.iterdir()):
+        if child.is_dir() and not child.name.startswith('.'):
+            if has_model_files(child):
+                return child
+            # Check snapshots structure (models--*/snapshots/hash/)
+            snapshots = child / "snapshots"
+            if snapshots.is_dir():
+                snaps = sorted(snapshots.iterdir())
+                if snaps and has_model_files(snaps[-1]):
+                    return snaps[-1]
+
+    return folder
+
+
 def is_model_downloaded(model_id: str, hf_models_folder: Path) -> bool:
     """
     Check if a model is already downloaded in the HuggingFace models folder.
@@ -256,9 +290,12 @@ def select_hf_model() -> Optional[Tuple[str, Path]]:
         print("Local models found in folder:")
         for folder in sorted(local_folders):
             idx = len(selection_list) + 1
+            resolved = resolve_model_path(folder)
             size = get_model_folder_size(folder)
-            print(f"{idx}. {folder.name} (Local Folder - {size})")
-            selection_list.append({"type": "local", "id": folder.name, "path": folder})
+            # Show resolved path hint if different from top-level folder
+            label = folder.name if resolved == folder else f"{folder.name}/{resolved.name}"
+            print(f"{idx}. {label} (Local Folder - {size})")
+            selection_list.append({"type": "local", "id": label, "path": resolved})
     else:
         print("[INFO] No local models found in folder")
 

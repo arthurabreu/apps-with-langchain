@@ -1,7 +1,3 @@
-Aqui está o Super Prompt traduzido para o inglês, mas com a instrução específica para que a inteligência artificial processe o pedido e entregue todo o conteúdo técnico em Português do Brasil.
-
-Isso é útil caso você queira testar modelos de IA que performam melhor recebendo instruções em inglês (como o GPT-4 ou o próprio Gemini em certas versões), mas precisa do resultado final para o seu trabalho no posto de saúde.
-
 Super Prompt (Instruções em Inglês / Resposta em Português)
 "Act as a Senior Public Health Consultant and Exercise Physiology Specialist for the Elderly. Based on the 'Saúde em Movimento' project for municipal health centers, develop a complete strategic plan using exclusively the following materials: Wooden Sticks (Bastão), Sand-filled Bottles (Garrafa com Areia), Resistance Bands (Elástico), and Exercise Mats (Colchonete).
 
