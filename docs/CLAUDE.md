@@ -13,16 +13,26 @@ pip install -r requirements.txt
 python src/main.py
 
 # Run tests
-python test_claude.py
+python tests/test_claude.py
 ```
 
-Single test: there is no pytest config — run `python test_claude.py` directly.
+Single test: there is no pytest config — run `python tests/test_claude.py` directly.
 
 Requires `.env` with `ANTHROPIC_API_KEY` set. Copy `.env.example` if present, or create `.env` manually.
 
 ## Architecture
 
 This is a LangChain + Anthropic Claude application with an interactive CLI (`src/main.py`) for testing and comparing LLM models. The architecture follows SOLID principles with explicit dependency injection.
+
+### Folder Structure
+
+| Folder | Purpose |
+|--------|---------|
+| `docs/` | Project documentation and guides |
+| `tests/` | Unit and integration tests, usage examples |
+| `data/` | Persistent data, token usage logs, cost tracking |
+| `logs/` | Application logs |
+| `src/` | Source code (core logic and CLI) |
 
 ### Core Module (`src/core/`)
 

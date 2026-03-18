@@ -82,7 +82,7 @@ CONTEXT_DEFAULTS = {
 # FILE PATHS
 # ============================================================================
 
-TOKEN_USAGE_LOG = "token_usage.json"
+TOKEN_USAGE_LOG = "data/token_usage.json"
 COSTS_LOG = "data/costs.json"
 RESPONSES_DIR = "responses"
 
@@ -100,3 +100,22 @@ ANTHROPIC_MAX_RETRIES = 3
 
 LOG_FORMAT = '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
 LOG_LEVEL = "INFO"
+
+# ============================================================================
+# TEST PROMPTS
+# ============================================================================
+
+TEST_PROMPTS = [
+    {
+        "name": "Kotlin Coroutine",
+        "prompt": "Write a Kotlin function that uses coroutines to fetch data from two APIs concurrently. Include error handling and timeouts."
+    },
+    {
+        "name": "Kotlin Palindrome",
+        "prompt": "Write a Kotlin function that checks if a string is a palindrome. Make it case-insensitive and ignore non-alphanumeric characters."
+    },
+    {
+        "name": "Explain Coroutines",
+        "prompt": "Explain Kotlin coroutines to a beginner. Keep it under 150 words."
+    }
+]

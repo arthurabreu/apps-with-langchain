@@ -6,8 +6,8 @@ import json
 import os
 import pandas as pd
 from typing import Dict, Any, List
-from src.core.interfaces import IFileExporter
-from src.core.exceptions import ModelValidationError
+from .interfaces import IFileExporter
+from .exceptions import ModelValidationError
 
 
 class ExcelExporter(IFileExporter):

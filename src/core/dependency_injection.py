@@ -11,6 +11,7 @@ from .models.model_factory import ModelFactory
 from .prompt_manager import PromptManager
 from .cost_tracker import CostTracker
 from .exporters import ExcelExporter
+from .cli_service import InteractiveCLI
 
 T = TypeVar('T')
 
@@ -37,6 +38,7 @@ class DIContainer:
         self.register_singleton(PromptManager, PromptManager)
         self.register_singleton(CostTracker, CostTracker)
         self.register_singleton(ExcelExporter, ExcelExporter)
+        self.register_factory(InteractiveCLI, lambda: InteractiveCLI(self))
 
         # User interaction (depends on logging)
         self.register_factory(
@@ -125,6 +127,10 @@ class DIContainer:
     def get_file_exporter(self) -> IFileExporter:
         """Get file exporter service."""
         return self.get(ExcelExporter)
+
+    def get_cli_service(self) -> InteractiveCLI:
+        """Get interactive CLI service."""
+        return self.get(InteractiveCLI)
 
 
 # Global container instance

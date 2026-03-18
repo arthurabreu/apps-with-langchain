@@ -8,13 +8,6 @@ warnings.filterwarnings("ignore", category=UserWarning, module="langchain_core._
 
 import os
 import sys
-# Add project root and src to path so we can import files correctly before importing from core
-project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-src_dir = os.path.join(project_root, "src")
-if project_root not in sys.path:
-    sys.path.insert(0, project_root)
-if src_dir not in sys.path:
-    sys.path.insert(1, src_dir)
 
 from dotenv import load_dotenv
 from core.config import (
@@ -31,20 +24,6 @@ hf_key = os.getenv("HUGGINGFACE_API_KEY")
 if hf_key:
     os.environ["HF_TOKEN"] = hf_key
 
-def print_api_key_status():
-    """Display the status of API keys."""
-    keys = {
-        "Hugging Face": os.getenv("HUGGINGFACE_API_KEY"),
-        "Anthropic": os.getenv("ANTHROPIC_API_KEY")
-    }
-    
-    print("\n" + "=" * 40)
-    print("API Key Status:")
-    print("-" * 40)
-    for name, key in keys.items():
-        is_ok = key and "your-" not in key.lower() and key.strip() != ""
-        print(f"{name:13}: {'[OK] Configured' if is_ok else '[X] Missing'}")
-    print("=" * 40 + "\n")
 
 def check_memory_usage():
     """Check current memory usage."""
@@ -414,73 +393,6 @@ def test_local_model():
         import traceback
         traceback.print_exc()
 
-def test_claude_model():
-    """Test the Claude model with different prompts."""
-    print("[TEST] Claude Model Demo")
-    print("-" * 40)
-
-    # Check if Claude API key is configured
-    claude_key = os.getenv("ANTHROPIC_API_KEY")
-    if not claude_key or "your-" in claude_key.lower():
-        print("\n[ERROR] Anthropic API key not configured.")
-        print("Add your ANTHROPIC_API_KEY to the .env file")
-        print("Format: ANTHROPIC_API_KEY=your-actual-key-here")
-        return
-
-    try:
-        from core.dependency_injection import get_container
-        from core.interfaces import ModelConfig
-
-        # Get services from DI container
-        container = get_container()
-        factory = container.get_model_factory()
-
-        # Test prompts
-        test_prompts = [
-            {
-                "name": "Kotlin Coroutine",
-                "prompt": "Write a Kotlin function that uses coroutines to fetch data from two APIs concurrently. Include error handling and timeouts."
-            },
-            {
-                "name": "Kotlin Palindrome",
-                "prompt": "Write a Kotlin function that checks if a string is a palindrome. Make it case-insensitive and ignore non-alphanumeric characters."
-            },
-            {
-                "name": "Explain Coroutines",
-                "prompt": "Explain Kotlin coroutines to a beginner. Keep it under 150 words."
-            }
-        ]
-
-        for i, test in enumerate(test_prompts, 1):
-            print(f"\n[{i}/{len(test_prompts)}] Testing: {test['name']}")
-            print(f"Prompt: {test['prompt']}")
-            print("-" * 40)
-
-            try:
-                config = ModelConfig(
-                    model_name="claude-3-haiku-20240307",
-                    system_message="You are a helpful assistant.",
-                    max_tokens=512,
-                    temperature=0.2,
-                )
-                claude_model = factory.create_model("anthropic", config)
-                result = claude_model.generate(test['prompt'])
-                print(f"Response:\n{result.content}")
-            except Exception as e:
-                print(f"Error: {e}")
-
-            if i < len(test_prompts):
-                input("\nPress Enter to continue to next test...")
-
-        print("\n" + "=" * 40)
-        print("Claude Model Testing Complete!")
-        print("=" * 40)
-
-    except ImportError as e:
-        print(f"[ERROR] Missing dependencies for Claude: {e}")
-        print("Install with: pip install langchain-anthropic")
-    except Exception as e:
-        print(f"[ERROR] Failed to initialize Claude model: {e}")
 
 def compare_models():
     """Compare all available models."""
@@ -1128,7 +1040,7 @@ def _convert_default_json_to_excel():
     from core.services import get_brazil_time
     from pathlib import Path
 
-    default_json = Path(project_root) / "default_json_for_excel_convertion.json"
+    default_json = Path(project_root) / "data/default_json_for_excel_convertion.json"
 
     if not default_json.exists():
         print(f"\n[ERROR] File not found: {default_json}")
@@ -1388,7 +1300,10 @@ def main():
     print("=" * 60)
 
     # Show API key status
-    print_api_key_status()
+    from core.dependency_injection import get_container
+    container = get_container()
+    cli = container.get_cli_service()
+    cli.print_api_key_status()
 
     # Show system info on first run
     try:
@@ -1409,7 +1324,7 @@ def main():
         print("\n⭐ FEATURED:")
         print("1. Android Code-Gen Agent")
         print("2. LLM to Excel Agent")
-        print("3. JSON to Excel (no LLM - paste your JSON in default_json_for_excel_convertion.json)")
+        print("3. JSON to Excel (no LLM - paste your JSON in data/default_json_for_excel_convertion.json)")
         print("\n📚 TESTING & LEARNING:")
         print("4. Model Testing & Evaluation")
         print("5. Learning & Examples")

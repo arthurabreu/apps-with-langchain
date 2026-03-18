@@ -39,13 +39,17 @@ python src/example_langchain_usage.py
 ## 📁 Estrutura do Projeto
 
 ```
-├── .env                           # Variáveis de ambiente (NÃO commitado)
-├── .gitignore                     # Já configurado para ignorar .env
-├── requirements.txt               # Dependências (inclui python-dotenv)
-├── src/
-│   ├── main.py                   # Arquivo principal com demonstração
-│   └── example_langchain_usage.py # Exemplos de uso do LangChain
-└── README.md                     # Este arquivo
+├── data/                          # Persistent data (token usage, JSON exports)
+├── docs/                          # Project documentation and guides
+├── logs/                          # Application logs
+├── src/                           # Source code
+│   ├── main.py                    # Main CLI orchestration
+│   └── core/                      # Core business logic
+├── tests/                         # Unit tests and usage examples
+├── .env                           # Environment variables (NOT committed)
+├── .gitignore                     # Configured to ignore .env and logs
+├── requirements.txt               # Dependencies
+└── README.md                      # This file
 ```
 
 ## 🔧 Como Funciona

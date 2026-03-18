@@ -180,7 +180,7 @@ class LoggingService:
             format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
             handlers=[
                 logging.StreamHandler(),
-                logging.FileHandler('langchain_app.log')
+                logging.FileHandler('logs/langchain_app.log')
             ]
         )
     
