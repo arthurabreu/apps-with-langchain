@@ -12,6 +12,10 @@ warnings.filterwarnings("ignore", category=UserWarning, module="langchain_core._
 import os
 import sys
 
+# 0. Fix module resolution (Like setting up your classpath in Gradle)
+# This allows imports from 'core' to work even if we run from the project root.
+sys.path.append(os.path.dirname(os.path.abspath(__file__)))
+
 from dotenv import load_dotenv
 from core.config import (
     DEFAULT_MODEL, DEFAULT_MAX_TOKENS, DEFAULT_TEMPERATURE,

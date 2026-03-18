@@ -20,7 +20,11 @@
       "Bash(python3 -m py_compile src/android_agent/provider_factory.py)",
       "Bash(python3:*)",
       "Bash(head -20 grep -n \"Expecting value\\\\|json.loads\\\\|json.load\\\\|JSONDecodeError\" /home/arthurabreu/Documents/python/apps-with-langchain/src/main.py)",
-      "Bash(python3 -c \":*)"
+      "Bash(python3 -c \":*)",
+      "Bash(.venv/bin/pip install:*)",
+      "Bash(.venv/bin/python src/main.py)",
+      "Bash(git push:*)",
+      "Bash(gh pr:*)"
     ]
   }
 }

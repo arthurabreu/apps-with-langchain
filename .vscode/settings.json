@@ -1,0 +1,10 @@
+{
+  "python.defaultInterpreterPath": "/home/arthurabreu/Documents/python/apps-with-langchain/.venv/bin/python",
+  "python.linting.enabled": true,
+  "python.linting.pylintEnabled": false,
+  "python.terminal.executeInFileDir": true,
+  "python.terminal.executeInTerminal": true,
+  "code-runner.executorMap": {
+    "python": "/home/arthurabreu/Documents/python/apps-with-langchain/.venv/bin/python"
+  }
+}
