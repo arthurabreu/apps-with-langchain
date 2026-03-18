@@ -1,6 +1,10 @@
 """
 Interactive CLI service for the LangChain application.
-Extracts all UI and orchestration logic from main.py following SRP.
+
+Android Analogy:
+- This is your 'MainActivity' logic or a 'Presenter/ViewModel' that handles 
+  user input and coordinates different services.
+- It orchestrates the flow: showing menus, calling models, and displaying results.
 """
 
 from typing import Dict, Any, TYPE_CHECKING
@@ -25,6 +29,12 @@ import torch
 
 class InteractiveCLI:
     def __init__(self, container: 'DIContainer'):
+        """
+        Initialize the CLI with all needed services from the DI container.
+        
+        Android Analogy: Similar to how you'd get services from a 
+        Dagger Component or Koin 'get()'.
+        """
         self.container = container
         self.factory = container.get_model_factory()
         self.user_interaction = container.get_user_interaction()
@@ -35,7 +45,10 @@ class InteractiveCLI:
         self.model_comparison = ModelComparison()
 
     def print_api_key_status(self):
-        """Display the status of API keys."""
+        """
+        Check and print if API keys are correctly set in .env.
+        Like a 'checkPermissions' or 'checkPrerequisites' step.
+        """
         keys = {
             "Hugging Face": self.config_manager.get_api_key("huggingface"),
             "Anthropic": self.config_manager.get_api_key("anthropic")
