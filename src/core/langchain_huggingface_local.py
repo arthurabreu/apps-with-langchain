@@ -3,12 +3,16 @@ Module for working with local Hugging Face models in LangChain.
 Focuses on educational aspects and proper error handling.
 """
 
+import gc
 import os
 import torch
 import threading
 import time
 import sys
 import psutil
+
+# Allow non-contiguous CUDA memory allocation — prevents OOM from fragmentation
+os.environ.setdefault("PYTORCH_CUDA_ALLOC_CONF", "expandable_segments:True")
 from transformers import AutoTokenizer, AutoModelForCausalLM, pipeline
 from typing import Optional, Dict, Any, Tuple
 
@@ -38,12 +42,13 @@ def _select_device() -> Tuple[str, torch.dtype]:
     return device, dtype
 
 
-def _get_max_memory(fraction: float = 0.85) -> dict:
+def _get_max_memory(fraction: float = 0.75) -> dict:
     """
-    Calculate max_memory dict to cap GPU and CPU memory at fraction of available.
+    Calculate max_memory dict based on CURRENT free memory, not total.
+    This is smarter than using a fraction of total, which doesn't account for OS overhead.
 
     Args:
-        fraction: Fraction of total available memory to use (e.g., 0.85 = 85%)
+        fraction: Fraction of CURRENT free memory to use (e.g., 0.75 = 75% of what's free now)
 
     Returns:
         Dictionary suitable for HuggingFace transformers device_map="auto"
@@ -51,10 +56,14 @@ def _get_max_memory(fraction: float = 0.85) -> dict:
     mem = {}
     if torch.cuda.is_available():
         for i in range(torch.cuda.device_count()):
-            total = torch.cuda.get_device_properties(i).total_memory
-            mem[i] = f"{int(total * fraction / (1024**2))}MiB"
-    ram = psutil.virtual_memory().total
-    mem["cpu"] = f"{int(ram * fraction / (1024**2))}MiB"
+            # Get current free VRAM (not total)
+            free = torch.cuda.mem_get_info(i)[0] / (1024**2)  # in MiB
+            # Use 75% of what's currently free
+            mem[i] = f"{int(free * fraction)}MiB"
+
+    # Get current free RAM
+    free_ram = psutil.virtual_memory().available / (1024**2)  # in MiB
+    mem["cpu"] = f"{int(free_ram * fraction)}MiB"
     return mem
 
 
@@ -200,7 +209,7 @@ class LocalHuggingFaceModel:
 
             # Load model with device-specific configuration
             if device == "cuda":
-                max_mem = _get_max_memory(fraction=0.90)
+                max_mem = _get_max_memory(fraction=0.75)
                 print(f"[INFO] Memory limits: {max_mem}")
                 print("[INFO] Large models will offload to CPU if needed (slower but works)")
 
@@ -217,12 +226,23 @@ class LocalHuggingFaceModel:
                         max_memory=max_mem,
                         token=os.getenv("HUGGINGFACE_API_KEY")
                     )
-                except ValueError as e:
-                    # 4-bit quantization failed (likely model too large for GPU offloading)
-                    # Fall back to unquantized with CPU offloading
-                    if "dispatched on the CPU or the disk" in str(e):
-                        print("[WARNING] 4-bit quantization incompatible with CPU offloading. Falling back to unquantized model with float16.")
-                        print("[WARNING] This may use more VRAM but will work with CPU offloading.")
+                except (ValueError, RuntimeError) as e:
+                    error_msg = str(e).lower()
+                    if "out of memory" in error_msg or "dispatched on the cpu or the disk" in error_msg:
+                        print(f"[WARNING] 4-bit quantization failed: {e}")
+                        print("[WARNING] Doing full GPU cleanup before fallback...")
+
+                        # Full cleanup before retry
+                        if self._model is not None:
+                            del self._model
+                            self._model = None
+                        gc.collect()
+                        torch.cuda.empty_cache()
+                        torch.cuda.reset_peak_memory_stats()
+
+                        # Recalculate max_memory AFTER cleanup
+                        max_mem = _get_max_memory(fraction=0.75)
+                        print(f"[WARNING] Falling back to unquantized float16. Memory after cleanup: {max_mem}")
 
                         self._model = AutoModelForCausalLM.from_pretrained(
                             actual_model_id,

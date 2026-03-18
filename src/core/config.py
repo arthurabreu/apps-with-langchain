@@ -1,6 +1,9 @@
 """
 Global configuration and constants for the application.
-All model names, tokens, temperatures, and other settings are defined here.
+
+Android Analogy:
+- This is your 'Constants.kt' or 'Config.kt' file.
+- It centralizes model names, tokens, prices, and default settings.
 """
 
 # ============================================================================
@@ -11,6 +14,7 @@ All model names, tokens, temperatures, and other settings are defined here.
 DEFAULT_MODEL = "claude-3-haiku-20240307"
 
 # Available Claude models
+# Like a Map<String, String> of API IDs.
 CLAUDE_MODELS = {
     "opus": "claude-3-opus-20240229",
     "sonnet": "claude-3-5-sonnet-20240620",
@@ -46,13 +50,13 @@ PRICING = {
 # GENERATION PARAMETERS
 # ============================================================================
 
-# Default temperature for deterministic responses
+# Default temperature for deterministic responses (Fixed logic)
 DEFAULT_TEMPERATURE = 0.2
 
-# Temperature for creative responses
+# Temperature for creative responses (More variation)
 CREATIVE_TEMPERATURE = 0.7
 
-# Temperature for precise code generation
+# Temperature for precise code generation (Strict accuracy)
 CODE_TEMPERATURE = 0.1
 
 # ============================================================================
@@ -60,6 +64,7 @@ CODE_TEMPERATURE = 0.1
 # ============================================================================
 
 # Default config overrides per context
+# Similar to Build Flavors or specific Config Objects.
 CONTEXT_DEFAULTS = {
     "default": {
         "model": DEFAULT_MODEL,
@@ -82,7 +87,7 @@ CONTEXT_DEFAULTS = {
 # FILE PATHS
 # ============================================================================
 
-TOKEN_USAGE_LOG = "token_usage.json"
+TOKEN_USAGE_LOG = "data/token_usage.json"
 COSTS_LOG = "data/costs.json"
 RESPONSES_DIR = "responses"
 
@@ -100,3 +105,22 @@ ANTHROPIC_MAX_RETRIES = 3
 
 LOG_FORMAT = '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
 LOG_LEVEL = "INFO"
+
+# ============================================================================
+# TEST PROMPTS (Used for Model Evaluation)
+# ============================================================================
+
+TEST_PROMPTS = [
+    {
+        "name": "Kotlin Coroutine",
+        "prompt": "Write a Kotlin function that uses coroutines to fetch data from two APIs concurrently. Include error handling and timeouts."
+    },
+    {
+        "name": "Kotlin Palindrome",
+        "prompt": "Write a Kotlin function that checks if a string is a palindrome. Make it case-insensitive and ignore non-alphanumeric characters."
+    },
+    {
+        "name": "Explain Coroutines",
+        "prompt": "Explain Kotlin coroutines to a beginner. Keep it under 150 words."
+    }
+]

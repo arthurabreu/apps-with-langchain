@@ -3,12 +3,18 @@ MiniMax-M2.1 model implementation following SOLID principles.
 Uses local Hugging Face transformers library for inference.
 """
 
+import gc
 import logging
 import torch
 import os
 import psutil
+import sys
+import time
 from typing import Dict, Any, Optional, Tuple
 from transformers import AutoTokenizer, AutoModelForCausalLM
+
+# Allow non-contiguous CUDA memory allocation — prevents OOM from fragmentation
+os.environ.setdefault("PYTORCH_CUDA_ALLOC_CONF", "expandable_segments:True")
 
 from ..interfaces import ILanguageModel, ITokenManager, IUserInteraction, ModelConfig, GenerationResult
 from ..exceptions import ModelConfigurationError, GenerationError
@@ -42,12 +48,13 @@ def _select_device() -> Tuple[str, torch.dtype]:
     return device, dtype
 
 
-def _get_max_memory(fraction: float = 0.85) -> dict:
+def _get_max_memory(fraction: float = 0.75) -> dict:
     """
-    Calculate max_memory dict to cap GPU and CPU memory at fraction of available.
+    Calculate max_memory dict based on CURRENT free memory, not total.
+    This is smarter than using a fraction of total, which doesn't account for OS overhead.
 
     Args:
-        fraction: Fraction of total available memory to use (e.g., 0.85 = 85%)
+        fraction: Fraction of CURRENT free memory to use (e.g., 0.75 = 75% of what's free now)
 
     Returns:
         Dictionary suitable for HuggingFace transformers device_map="auto"
@@ -55,10 +62,14 @@ def _get_max_memory(fraction: float = 0.85) -> dict:
     mem = {}
     if torch.cuda.is_available():
         for i in range(torch.cuda.device_count()):
-            total = torch.cuda.get_device_properties(i).total_memory
-            mem[i] = f"{int(total * fraction / (1024**2))}MiB"
-    ram = psutil.virtual_memory().total
-    mem["cpu"] = f"{int(ram * fraction / (1024**2))}MiB"
+            # Get current free VRAM (not total)
+            free = torch.cuda.mem_get_info(i)[0] / (1024**2)  # in MiB
+            # Use 75% of what's currently free
+            mem[i] = f"{int(free * fraction)}MiB"
+
+    # Get current free RAM
+    free_ram = psutil.virtual_memory().available / (1024**2)  # in MiB
+    mem["cpu"] = f"{int(free_ram * fraction)}MiB"
     return mem
 
 
@@ -75,6 +86,39 @@ def _build_bnb_config():
         bnb_4bit_use_double_quant=True,
         bnb_4bit_compute_dtype=torch.bfloat16,
     )
+
+
+class GenerationProgressTracker:
+    """Track and display generation progress in real-time."""
+
+    def __init__(self, max_tokens: int, user_interaction):
+        self.max_tokens = max_tokens
+        self.user_interaction = user_interaction
+        self.start_time = time.time()
+        self.tokens_generated = 0
+        self.last_update = 0
+
+    def update(self, tokens_generated: int):
+        """Update progress and display if enough time has passed."""
+        self.tokens_generated = tokens_generated
+        current_time = time.time()
+
+        # Update every 2 seconds or at end
+        if current_time - self.last_update >= 2.0 or tokens_generated >= self.max_tokens:
+            elapsed = current_time - self.start_time
+            progress = min(100, (tokens_generated / self.max_tokens) * 100)
+
+            # Calculate tokens/sec and ETA
+            if elapsed > 0:
+                tokens_per_sec = tokens_generated / elapsed
+                remaining_tokens = max(0, self.max_tokens - tokens_generated)
+                eta_sec = remaining_tokens / tokens_per_sec if tokens_per_sec > 0 else 0
+
+                progress_bar = "█" * int(progress / 5) + "░" * (20 - int(progress / 5))
+                msg = f"[PROGRESS] {progress_bar} {progress:.0f}% | {tokens_generated}/{self.max_tokens} tokens | {tokens_per_sec:.1f} tok/s | ETA: {int(eta_sec)}s"
+                self.user_interaction.display_info(msg)
+
+            self.last_update = current_time
 
 
 class MiniMaxModel(ILanguageModel):
@@ -164,8 +208,8 @@ class MiniMaxModel(ILanguageModel):
             
             # Load model with device-specific configuration
             if self._device == "cuda":
-                # Use 90% of VRAM to allow larger models with CPU offloading
-                max_mem = _get_max_memory(fraction=0.90)
+                # Use 75% of current free memory to leave headroom for OS and loading
+                max_mem = _get_max_memory(fraction=0.75)
                 self.logger.info(f"Memory limits: {max_mem}")
                 self.logger.info("Large models will offload to CPU if needed (slower but works)")
 
@@ -183,16 +227,27 @@ class MiniMaxModel(ILanguageModel):
                         trust_remote_code=True,
                         token=hf_token
                     )
-                except ValueError as e:
-                    # 4-bit quantization failed (likely model too large for GPU offloading)
-                    # Fall back to unquantized with CPU offloading
-                    if "dispatched on the CPU or the disk" in str(e):
-                        self.logger.warning("4-bit quantization incompatible with CPU offloading. Falling back to unquantized model with float16.")
-                        self.logger.warning("This may use more VRAM but will work with CPU offloading.")
+                except (ValueError, RuntimeError) as e:
+                    error_msg = str(e).lower()
+                    if "out of memory" in error_msg or "dispatched on the cpu or the disk" in error_msg:
+                        self.logger.warning(f"4-bit quantization failed: {e}")
+                        self.logger.warning("Doing full GPU cleanup before fallback...")
+
+                        # Full cleanup: delete any partial model, collect garbage, clear GPU cache
+                        if self._model is not None:
+                            del self._model
+                            self._model = None
+                        gc.collect()
+                        torch.cuda.empty_cache()
+                        torch.cuda.reset_peak_memory_stats()
+
+                        # Recalculate max_memory AFTER cleanup (state has changed)
+                        max_mem = _get_max_memory(fraction=0.75)
+                        self.logger.warning(f"Fallback to unquantized float16. Memory after cleanup: {max_mem}")
 
                         self._model = AutoModelForCausalLM.from_pretrained(
                             self.config.model_name,
-                            torch_dtype=self._dtype,  # float16 or bfloat16
+                            torch_dtype=self._dtype,
                             device_map="auto",
                             max_memory=max_mem,
                             trust_remote_code=True,
@@ -259,14 +314,24 @@ class MiniMaxModel(ILanguageModel):
                 {"role": "user", "content": prompt},
             ]
 
-            # Apply chat template
-            inputs = self._tokenizer.apply_chat_template(
-                messages,
-                add_generation_prompt=True,
-                tokenize=True,
-                return_dict=True,
-                return_tensors="pt",
-            ).to(self._model.device if hasattr(self._model, 'device') else self._device)
+            # Apply chat template if available, otherwise fall back to plain text tokenization
+            target_device = self._model.device if hasattr(self._model, 'device') else self._device
+            if self._tokenizer.chat_template:
+                inputs = self._tokenizer.apply_chat_template(
+                    messages,
+                    add_generation_prompt=True,
+                    tokenize=True,
+                    return_dict=True,
+                    return_tensors="pt",
+                ).to(target_device)
+            else:
+                # No chat template (e.g. gemma-7b base model) — tokenize plain text
+                self.logger.info("No chat template found, using plain text tokenization.")
+                inputs = self._tokenizer(
+                    prompt,
+                    return_tensors="pt",
+                    return_attention_mask=True,
+                ).to(target_device)
 
             # Count prompt tokens
             prompt_tokens = inputs["input_ids"].shape[-1]
@@ -282,24 +347,62 @@ class MiniMaxModel(ILanguageModel):
 
             # Generate text
             max_new_tokens = kwargs.get('max_new_tokens', self.config.max_tokens)
-            outputs = self._model.generate(
-                **inputs,
-                max_new_tokens=max_new_tokens,
-                temperature=self.config.temperature,
-                do_sample=True
+
+            # Cap max_tokens for very large models with CPU offloading to prevent OOM during inference
+            # Large models need significant space for output generation
+            total_params = sum(p.numel() for p in self._model.parameters())
+            if total_params > 20e9:  # > 20B parameters
+                max_new_tokens = min(max_new_tokens, 512)
+                self.logger.warning(f"Capping max_tokens to 512 for large model ({total_params/1e9:.1f}B) to avoid OOM during generation")
+
+            # Use streaming to track progress in real-time
+            from transformers import TextIteratorStreamer
+            from threading import Thread
+
+            progress_tracker = GenerationProgressTracker(max_new_tokens, self.user_interaction)
+
+            # Create a streamer to capture tokens as they're generated
+            # skip_prompt=True ensures the input prompt is NOT included in the output
+            streamer = TextIteratorStreamer(
+                self._tokenizer,
+                skip_prompt=True,
+                skip_special_tokens=True,
+                timeout=300.0,  # 5-minute timeout
             )
 
-            # Decode the response (skip the input tokens)
-            response_tokens = outputs[0][inputs["input_ids"].shape[-1]:]
-            generated_text = self._tokenizer.decode(response_tokens)
+            # Generate in a thread so we can track progress
+            generation_kwargs = {
+                **inputs,
+                "max_new_tokens": max_new_tokens,
+                "min_new_tokens": 10,
+                "temperature": self.config.temperature,
+                "do_sample": True,
+                "repetition_penalty": 1.1,
+                "streamer": streamer,
+            }
 
-            self.logger.info(f"Generated {len(response_tokens)} tokens")
+            gen_thread = Thread(target=self._model.generate, kwargs=generation_kwargs)
+            gen_thread.start()
+
+            # Collect output while tracking progress
+            generated_text = ""
+            tokens_count = 0
+            for new_text in streamer:
+                generated_text += new_text
+                # Rough token count based on text length
+                tokens_count = len(self._tokenizer.encode(generated_text)) - prompt_tokens
+                progress_tracker.update(tokens_count)
+
+            gen_thread.join()
+            response_tokens_count = tokens_count
+
+            self.logger.info(f"Generated {response_tokens_count} tokens")
             self.user_interaction.display_info("[SUCCESS] Response generated!")
 
             # Log token usage for output
             self.token_manager.log_usage(
                 self.config.model_name,
-                len(response_tokens),
+                response_tokens_count,
                 "response",
                 is_output=True
             )
@@ -309,7 +412,7 @@ class MiniMaxModel(ILanguageModel):
 
             return GenerationResult(
                 content=generated_text,
-                tokens_used=len(response_tokens),
+                tokens_used=response_tokens_count,
                 cost=usage_summary.get('total_cost', 0.0),
                 metadata={
                     "provider": self.provider,
@@ -317,8 +420,8 @@ class MiniMaxModel(ILanguageModel):
                     "device": self._device,
                     "dtype": str(self._dtype),
                     "prompt_tokens": prompt_tokens,
-                    "response_tokens": len(response_tokens),
-                    "total_tokens": prompt_tokens + len(response_tokens),
+                    "response_tokens": response_tokens_count,
+                    "total_tokens": prompt_tokens + response_tokens_count,
                 }
             )
 

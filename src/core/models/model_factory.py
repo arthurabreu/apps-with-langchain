@@ -1,6 +1,10 @@
 """
 Model factory implementation following the Factory pattern.
-Creates model instances with proper dependency injection.
+
+Android Analogy:
+- This is a standard Factory class, similar to a ViewModelProvider.Factory 
+  or a custom Factory for creating complex objects with many dependencies.
+- It uses the Registry pattern to map strings (like 'anthropic') to classes.
 """
 
 import logging
@@ -14,7 +18,12 @@ from .minimax_model import MiniMaxModel
 
 
 class ModelFactory:
-    """Factory for creating language model instances."""
+    """
+    Factory for creating language model instances.
+    
+    This class is responsible for 'wiring' the dependencies (DI) 
+    into the model instances it creates.
+    """
 
     def __init__(
         self,
@@ -26,15 +35,9 @@ class ModelFactory:
         cost_tracker: Optional[Any] = None
     ):
         """
-        Initialize the model factory.
-
-        Args:
-            config_manager: Configuration management service
-            api_key_validator: API key validation service
-            token_manager: Token management service
-            user_interaction: User interaction service
-            logging_service: Logging service
-            cost_tracker: Cost tracking service (optional)
+        Initialize the model factory with its own dependencies.
+        
+        Android Analogy: Constructor Injection.
         """
         self.config_manager = config_manager
         self.api_key_validator = api_key_validator
@@ -45,6 +48,7 @@ class ModelFactory:
         self.logger = logging_service.get_logger(__name__)
         
         # Registry of available model classes
+        # Analogous to a Map<String, Class<out ILanguageModel>> in Kotlin.
         self._model_registry: Dict[str, Type[ILanguageModel]] = {
             "anthropic": ClaudeModel,
             "minimax": MiniMaxModel,
@@ -56,15 +60,14 @@ class ModelFactory:
         Create a model instance for the specified provider.
         
         Args:
-            provider: The model provider (openai, anthropic, minimax, etc.)
-            config: Model configuration
+            provider: The model provider (e.g., 'anthropic').
+            config: Model configuration data class.
             
         Returns:
-            Configured model instance
+            An implementation of ILanguageModel.
             
         Raises:
-            UnsupportedProviderError: If provider is not supported
-            ApiKeyError: If API key validation fails
+            UnsupportedProviderError: If the string doesn't match a registered class.
         """
         provider_lower = provider.lower()
         
@@ -74,21 +77,21 @@ class ModelFactory:
                 f"Provider '{provider}' not supported. Available providers: {available}"
             )
         
-        # Get API key from config or configuration manager (for API-based providers)
-        # MiniMax/HuggingFace models don't require API keys, but may use HF token for model download
+        # Logic to fetch API keys if not provided
         if provider_lower != "minimax" and provider_lower != "huggingface":
             if not config.api_key:
                 config.api_key = self.config_manager.get_api_key(provider_lower)
             
-            # Validate API key for API-based providers
+            # Validate API key format
             self.api_key_validator.validate_key(config.api_key, provider_lower)
         
-        # Get model class and create instance
+        # Get the class from registry (Dynamic instantiation)
         model_class = self._model_registry[provider_lower]
         logger = self.logging_service.get_logger(f"{__name__}.{provider_lower}")
         
         self.logger.info(f"Creating {provider} model: {config.model_name}")
 
+        # Injecting all necessary services into the new model instance
         return model_class(
             config=config,
             token_manager=self.token_manager,
@@ -98,22 +101,19 @@ class ModelFactory:
         )
     
     def get_available_providers(self) -> list[str]:
-        """Get list of available providers."""
+        """Get list of supported provider strings."""
         return list(self._model_registry.keys())
     
     def register_model(self, provider: str, model_class: Type[ILanguageModel]) -> None:
         """
-        Register a new model class.
-        
-        Args:
-            provider: Provider name
-            model_class: Model class to register
+        Register a new model class dynamically.
+        Allows 'Open/Closed' principle - you can add new models without changing this class.
         """
         self._model_registry[provider.lower()] = model_class
         self.logger.info(f"Registered model provider: {provider}")
     
     def create_default_claude_model(self, model_name: str = None) -> ILanguageModel:
-        """Create a default Claude model with standard configuration."""
+        """Convenience method to create a Claude model with defaults."""
         if model_name is None:
             model_name = DEFAULT_MODEL
         config = ModelConfig(
@@ -124,17 +124,7 @@ class ModelFactory:
         return self.create_model("anthropic", config)
     
     def create_minimax_model(self, model_name: str = None, temperature: float = 1.0, max_tokens: int = DEFAULT_MAX_TOKENS) -> ILanguageModel:
-        """
-        Create a MiniMax-M2.1 model with standard configuration.
-        
-        Args:
-            model_name: Model name (defaults to MiniMax-M2.1)
-            temperature: Generation temperature (default: 1.0 as per MiniMax docs)
-            max_tokens: Maximum tokens to generate
-            
-        Returns:
-            Configured MiniMax model instance
-        """
+        """Convenience method to create a MiniMax model with defaults."""
         if model_name is None:
             model_name = MiniMaxModel.DEFAULT_MODEL_ID
         config = ModelConfig(
@@ -145,17 +135,7 @@ class ModelFactory:
         return self.create_model("minimax", config)
     
     def create_huggingface_model(self, model_name: str, temperature: float = 0.7, max_tokens: int = DEFAULT_MAX_TOKENS) -> ILanguageModel:
-        """
-        Create a HuggingFace model using MiniMax infrastructure.
-        
-        Args:
-            model_name: HuggingFace model ID
-            temperature: Generation temperature
-            max_tokens: Maximum tokens to generate
-            
-        Returns:
-            Configured HuggingFace model instance
-        """
+        """Convenience method to create a HF model with defaults."""
         config = ModelConfig(
             model_name=model_name,
             temperature=temperature,

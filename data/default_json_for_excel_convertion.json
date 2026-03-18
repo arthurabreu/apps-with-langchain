@@ -1,0 +1,174 @@
+{
+  "justificativa_tecnica": {
+    "argumento_economico": "Redução direta de custos com internamentos decorrentes de quedas e fraturas de fêmur. O fortalecimento muscular e o treino de equilíbrio reduzem a fragilidade, diminuindo a demanda por pronto-atendimento e cirurgias ortopédicas de alto custo para o município.",
+    "embasamento_cientifico": "Diretrizes da OMS (2020) sobre atividade física e comportamento sedentário, e o Guia de Atividade Física para a População Brasileira. Foco na reversão da sarcopenia e melhora da densidade mineral óssea conforme protocolos da SBGG.",
+    "objetivo_social": "Promoção do envelhecimento ativo e redução do isolamento social. O projeto visa manter a autonomia funcional (AVDs), permitindo que o idoso permaneça independente em sua comunidade por mais tempo."
+  },
+  "protocolo_seguranca": [
+    {
+      "criterio_de_corte": "PA sistólica > 160mmHg ou diastólica > 100mmHg; Glicemia < 100mg/dL ou > 250mg/dL com sintomas.",
+      "sinal_de_alerta": "Tontura, palidez, sudorese fria, dor precordial (peito), falta de ar desproporcional ao esforço ou dor articular aguda.",
+      "checklist_ambiente": "Piso antiderrapante e seco; iluminação adequada; acesso fácil a pontos de hidratação; kit de primeiros socorros disponível no posto."
+    }
+  ],
+  "biblioteca_exercicios": [
+    {
+      "nome": "Agachamento com Apoio de Bastão",
+      "material": "Bastão",
+      "grupamento_muscular": "Quadríceps e Glúteos",
+      "funcao_vida_diaria": "Sentar e levantar de cadeiras, sofás e vasos sanitários.",
+      "series": 3,
+      "repeticoes": 12,
+      "cuidados_biomecanicos": "Manter o peso nos calcanhares e o bastão à frente para equilíbrio estático."
+    },
+    {
+      "nome": "Remada Alta com Bastão",
+      "material": "Bastão",
+      "grupamento_muscular": "Deltoides e Trapézio",
+      "funcao_vida_diaria": "Alcançar objetos em prateleiras altas e higiene pessoal.",
+      "series": 3,
+      "repeticoes": 10,
+      "cuidados_biomecanicos": "Manter ombros longe das orelhas (depressão escapular) durante a subida."
+    },
+    {
+      "nome": "Equilíbrio Dinâmico com Bastão",
+      "material": "Bastão",
+      "grupamento_muscular": "Core e Estabilizadores do Tornozelo",
+      "funcao_vida_diaria": "Caminhar em terrenos irregulares ou desviar de obstáculos.",
+      "series": 2,
+      "repeticoes": "1 min",
+      "cuidados_biomecanicos": "Manter o olhar no horizonte para evitar tonturas."
+    },
+    {
+      "nome": "Bíceps Unilateral com Garrafa",
+      "material": "Garrafa com Areia",
+      "grupamento_muscular": "Bíceps Braquial",
+      "funcao_vida_diaria": "Carregar sacolas de compras e objetos domésticos.",
+      "series": 3,
+      "repeticoes": 12,
+      "cuidados_biomecanicos": "Cotovelos colados ao tronco para evitar sobrecarga no ombro."
+    },
+    {
+      "nome": "Desenvolvimento de Ombros com Garrafa",
+      "material": "Garrafa com Areia",
+      "grupamento_muscular": "Deltoides e Tríceps",
+      "funcao_vida_diaria": "Guardar mantimentos ou roupas em armários superiores.",
+      "series": 3,
+      "repeticoes": 10,
+      "cuidados_biomecanicos": "Não arquear a lombar durante a fase concêntrica (subida)."
+    },
+    {
+      "nome": "Panturrilha com Carga (Garrafas)",
+      "material": "Garrafa com Areia",
+      "grupamento_muscular": "Gastrocnêmio e Sóleo",
+      "funcao_vida_diaria": "Subir degraus de ônibus e escadas com segurança.",
+      "series": 3,
+      "repeticoes": 15,
+      "cuidados_biomecanicos": "Amplitude máxima de movimento; manter garrafas ao lado do corpo."
+    },
+    {
+      "nome": "Remada Sentada com Elástico",
+      "material": "Elástico",
+      "grupamento_muscular": "Latíssimo do Dorso e Romboides",
+      "funcao_vida_diaria": "Abrir portas pesadas e manter a postura ereta ao caminhar.",
+      "series": 3,
+      "repeticoes": 12,
+      "cuidados_biomecanicos": "Aproximar as escápulas ('fechar as costas') no final do movimento."
+    },
+    {
+      "nome": "Abdução de Quadril com Elástico",
+      "material": "Elástico",
+      "grupamento_muscular": "Glúteo Médio",
+      "funcao_vida_diaria": "Entrar e sair de veículos e estabilidade lateral da marcha.",
+      "series": 2,
+      "repeticoes": 12,
+      "cuidados_biomecanicos": "Manter o pé de apoio levemente flexionado; não girar o quadril."
+    },
+    {
+      "nome": "Extensão de Tríceps com Elástico",
+      "material": "Elástico",
+      "grupamento_muscular": "Tríceps Braquial",
+      "funcao_vida_diaria": "Levantar da cama apoiando os braços.",
+      "series": 3,
+      "repeticoes": 10,
+      "cuidados_biomecanicos": "Pulsos neutros para evitar dor articular."
+    },
+    {
+      "nome": "Ponte Pélvica no Solo",
+      "material": "Colchonete",
+      "grupamento_muscular": "Glúteo Máximo e Paravertebrais",
+      "funcao_vida_diaria": "Estabilização da coluna e força para levantar-se do solo.",
+      "series": 3,
+      "repeticoes": 12,
+      "cuidados_biomecanicos": "Contrair o abdômen para proteger a região lombar."
+    },
+    {
+      "nome": "Abdominal Supra Suave",
+      "material": "Colchonete",
+      "grupamento_muscular": "Reto Abdominal",
+      "funcao_vida_diaria": "Melhora da mecânica respiratória e postura sentada.",
+      "series": 3,
+      "repeticoes": 15,
+      "cuidados_biomecanicos": "Não puxar o pescoço com as mãos; focar na contração do tronco."
+    },
+    {
+      "nome": "Alongamento 'Gato-Camelo'",
+      "material": "Colchonete",
+      "grupamento_muscular": "Mobilidade de Coluna",
+      "funcao_vida_diaria": "Flexibilidade para calçar sapatos e vestir roupas baixas.",
+      "series": 2,
+      "repeticoes": "10 ciclos",
+      "cuidados_biomecanicos": "Movimento fluido e sincronizado com a respiração."
+    }
+  ],
+  "planejamento_mensal": [
+    {
+      "foco_da_semana": "Adaptação e Mobilidade",
+      "dinamica_de_grupo": "Apresentação e circuito leve com bastões.",
+      "dica_saude_final_aula": "Hidrate-se antes, durante e após os exercícios, mesmo sem sentir sede."
+    },
+    {
+      "foco_da_semana": "Força e Estabilização",
+      "dinamica_de_grupo": "Revezamento de garrafinhas em duplas.",
+      "dica_saude_final_aula": "O consumo de proteínas após o treino ajuda a manter seus músculos fortes."
+    },
+    {
+      "foco_da_semana": "Equilíbrio e Propriocepção",
+      "dinamica_de_grupo": "Caminhada em linha reta desviando de obstáculos (garrafas).",
+      "dica_saude_final_aula": "Mantenha sua casa iluminada e sem tapetes soltos para evitar quedas."
+    },
+    {
+      "foco_da_semana": "Resistência e Funcionalidade",
+      "dinamica_de_grupo": "Circuito integrado simulando tarefas domésticas.",
+      "dica_saude_final_aula": "A atividade física regular melhora o sono e reduz a ansiedade."
+    }
+  ],
+  "ficha_avaliacao": [
+    {
+      "nome_do_teste": "Timed Up and Go (TUG)",
+      "procedimento": "Levantar da cadeira, caminhar 3 metros, girar e sentar. Mede-se o tempo total.",
+      "valor_referencia_idoso": "< 10 segundos: Independente; > 20 segundos: Risco de queda elevado.",
+      "periodicidade": "Trimestral"
+    },
+    {
+      "nome_do_teste": "Teste de Sentar e Levantar (30s)",
+      "procedimento": "Contar quantas vezes o idoso senta e levanta totalmente da cadeira em 30 segundos.",
+      "valor_referencia_idoso": "Homens (60-64 anos): 14-19 rep; Mulheres (60-64 anos): 12-17 rep.",
+      "periodicidade": "Trimestral"
+    }
+  ],
+  "gestao_materiais": [
+    {
+      "item": "Colchonetes",
+      "especificacao_tecnica": "Densidade D20 ou superior, revestimento lavável em courvin.",
+      "quantidade_para_20_alunos": 20,
+      "manutencao_preventiva": "Higienização com álcool 70% após cada aula."
+    },
+    {
+      "item": "Elásticos (Theraband)",
+      "especificacao_tecnica": "Resistência média (Amarelo ou Verde), 1.5 metros por aluno.",
+      "quantidade_para_20_alunos": 22,
+      "manutencao_preventiva": "Uso de talco para evitar ressecamento e verificar fissuras."
+    }
+  ]
+}
