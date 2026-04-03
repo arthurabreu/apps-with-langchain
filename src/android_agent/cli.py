@@ -25,50 +25,7 @@ from .agent import AndroidAgent
 from .provider_factory import _list_model_files
 from .context_engine import ContextEngine
 from .project_registry import ProjectRegistry
-from src.core.prompt_manager import PromptManager
 
-
-def _select_development_context() -> str:
-    """
-    Prompt user to select a development context from available prompts.
-
-    Returns:
-        System message string for the selected context, or empty string if skipped
-    """
-    try:
-        workspace_root = Path(__file__).resolve().parents[2]
-        prompts_file = workspace_root / "src" / "prompts" / "system_prompts.yaml"
-        prompt_manager = PromptManager(str(prompts_file))
-    except Exception:
-        return ""
-
-    prompts = prompt_manager.list_prompts()
-    if not prompts:
-        return ""
-
-    print("\n" + "=" * 40)
-    print("🎨 Development Context (optional):")
-    print("=" * 40)
-    options = list(prompts.items())
-    for i, (key, description) in enumerate(options, 1):
-        print(f"  {i}. {description}")
-    print(f"  {len(options) + 1}. Skip\n")
-
-    while True:
-        choice = input("Select context [number] (or skip): ").strip()
-        if choice.isdigit():
-            choice_idx = int(choice) - 1
-            if 0 <= choice_idx < len(options):
-                key = options[choice_idx][0]
-                print(f"✓ Context selected: {options[choice_idx][1]}\n")
-                return prompt_manager.get_system_message(key)
-            elif choice_idx == len(options):
-                print("✓ Skipping context\n")
-                return ""
-            else:
-                print("Invalid selection. Try again.\n")
-        else:
-            print("Invalid input. Try again.\n")
 
 
 def _prompt_new_directory() -> Path:
@@ -145,8 +102,8 @@ def main(task: str = None):
     engine = ContextEngine(project_root)
     claude_md_context = engine.load_claude_md()
 
-    # 1.5. Select development context
-    system_context = _select_development_context()
+    # System context (no longer prompted from file)
+    system_context = ""
     print()
 
     # 2. Choose model provider

@@ -16,16 +16,14 @@ import psutil
 from dotenv import load_dotenv
 
 if TYPE_CHECKING:
-    from .dependency_injection import DIContainer
+    from .di import DIContainer
 
 from .config import *
 from .interfaces import ILanguageModel, ModelConfig, GenerationStrategy
 from .models.model_factory import ModelFactory
 from .services import ConfigurationManager, ConsoleUserInteraction
-from .model_comparison import ModelComparison
-from .prompt_manager import PromptManager
-from .token_utils import TokenManager
-from .exporters import ExcelExporter
+from .utils import TokenManager
+from .excel_manipulation import ExcelExporter
 from .exceptions import *
 import torch
 
@@ -42,9 +40,7 @@ class InteractiveCLI:
         self.user_interaction = container.get_user_interaction()
         self.config_manager = container.get_config_manager()
         self.logger = container.get_logging_service().get_logger("cli")
-        self.prompt_manager = container.get_prompt_manager()
         self.token_manager = container.get_token_manager()
-        self.model_comparison = ModelComparison()
 
     def print_api_key_status(self):
         """
@@ -163,49 +159,21 @@ class InteractiveCLI:
         except Exception as e:
             print(f"[ERROR] Cleanup failed: {e}")
 
-    def test_claude_model(self):
-        """Test the Claude model with different prompts."""
-        print("[TEST] Claude Model Demo")
-        print("-" * 40)
-        config = ModelConfig(
-            model_name=DEFAULT_MODEL,
-            system_message="You are a helpful assistant.",
-            max_tokens=512,
-            temperature=0.2,
-        )
-        model = self.factory.create_model("anthropic", config)
-        self._run_test_loop(model, TEST_PROMPTS)
-        print("\n" + "=" * 40)
-        print("Claude Model Testing Complete!")
-        print("=" * 40)
-
-    def test_local_model(self):
-        """Test local HF model."""
-        print("\n🧪 Testing Local HF Model...")
-        model_name = "microsoft/DialoGPT-medium"  # or prompt for
-        config = ModelConfig(
-            model_name=model_name,
-            max_tokens=DEFAULT_MAX_TOKENS,
-            temperature=0.7,
-        )
-        model = self.factory.create_model("huggingface", config)
-        test_prompts = TEST_PROMPTS  # or local specific
-        self._run_test_loop(model, test_prompts)
 
     def prompt_for_task(self, agent_name: str = "Agent") -> str:
         """
         Prompt user to choose between loading a task from file or typing manually.
-        
-        Android Analogy: Similar to selecting an Intent source or picking a file 
+
+        Android Analogy: Similar to selecting an Intent source or picking a file
         via an ActivityResultLauncher.
-        
+
         Args:
             agent_name: Name of the agent for display (e.g., "Android Agent").
 
         Returns:
             The task/prompt string.
         """
-        files_dir = Path("files")
+        files_dir = Path("src/samples")
 
         # Get list of available script files
         script_files = []
@@ -393,8 +361,8 @@ class InteractiveCLI:
         """Convert a local JSON file directly to Excel without LLM usage."""
         print("\n📊 JSON TO EXCEL CONVERTER")
         print("=" * 60)
-        
-        default_json = Path("data/default_json_for_excel_convertion.json")
+
+        default_json = Path("src/data/default_json_for_excel_convertion.json")
 
         if not default_json.exists():
             print(f"\n[X] File not found: {default_json}")
@@ -420,173 +388,10 @@ class InteractiveCLI:
             
         input("\nPress Enter to return to menu...")
 
-    def model_testing_menu(self):
-        """Submenu for model testing and evaluation."""
-        while True:
-            print("\n" + "=" * 40)
-            print("🧪 MODEL TESTING & EVALUATION")
-            print("=" * 40)
-            print("1. Test Claude Model (Interactive)")
-            print("2. Test Local HF Model")
-            print("3. Compare All Available Models")
-            print("4. Back to main menu\n")
 
-            choice = input("Enter choice (1-4): ").strip()
-            if choice == "1":
-                self.test_claude_model()
-            elif choice == "2":
-                self.test_local_model()
-            elif choice == "3":
-                self.compare_models()
-            elif choice == "4":
-                break
-            else:
-                print("\n[ERROR] Invalid choice.")
 
-    def compare_models(self):
-        """
-        Compare performance and output quality across multiple providers.
-        """
-        print("\n⚖️ MODEL COMPARISON TOOL")
-        # Logic adapted from original main.py
-        try:
-            from core.model_comparison import ModelComparison
-            
-            # Simple check for available providers
-            providers = []
-            if self.config_manager.get_api_key("anthropic"): providers.append("Claude")
-            # We assume HF is available if package is there
-            providers.append("Local HF")
-            
-            print(f"[INFO] Models for comparison: {', '.join(providers)}")
-            
-            # Use defaults or custom
-            prompts = TEST_PROMPTS
-            if input("\nUse default test prompts? (y/n): ").lower() != 'y':
-                prompts = []
-                print("Enter 'done' to finish.")
-                while True:
-                    name = input("Prompt name: ").strip()
-                    if name.lower() == 'done': break
-                    txt = input("Prompt text: ").strip()
-                    prompts.append({"name": name, "prompt": txt})
-                if not prompts: prompts = TEST_PROMPTS
 
-            comparison = ModelComparison()
-            comparison.run_comparison(prompts)
-        except Exception as e:
-            print(f"[ERROR] Comparison failed: {e}")
-        
-        input("\nPress Enter to return...")
 
-    def learning_examples_menu(self):
-        """Submenu for learning resources and code examples."""
-        while True:
-            print("\n" + "=" * 40)
-            print("📚 LEARNING & EXAMPLES")
-            print("=" * 40)
-            print("1. Explain LangChain Concepts")
-            print("2. Show Example Code Snippets")
-            print("3. Back to main menu\n")
-
-            choice = input("Enter choice (1-3): ").strip()
-            if choice == "1":
-                self.explain_langchain_concepts()
-            elif choice == "2":
-                self.show_examples()
-            elif choice == "3":
-                break
-            else:
-                print("\n[ERROR] Invalid choice.")
-
-    def explain_langchain_concepts(self):
-        """Explains Core LangChain concepts for Android/Python developers."""
-        concepts = {
-            "Chains": "Sequences of operations. In Android, think of this as a Flow or Rx Pipeline.",
-            "Prompts": "Templates for LLM instructions. Similar to String resources with placeholders.",
-            "Models": "The 'Engine' (Claude, GPT, Llama). Think of them as specialized Repositories.",
-            "Memory": "Persistence for conversation history. Similar to SharedPreferences or Room for UI state."
-        }
-        for concept, desc in concepts.items():
-            print(f"\n💡 {concept}:")
-            print(f"   {desc}")
-            input("\nPress Enter for next...")
-
-    def show_examples(self):
-        """Displays practical examples of library usage."""
-        print("\n📝 EXAMPLE: Simple Chain")
-        print("```python\nchain = prompt | model | output_parser\nresult = chain.invoke({'input': 'Hi'})\n```")
-        input("\nPress Enter to return...")
-
-    def context_benchmarking_menu(self):
-        """Submenu for context-based tests and cost benchmarks."""
-        while True:
-            print("\n" + "=" * 40)
-            print("📊 CONTEXT & BENCHMARKING")
-            print("=" * 40)
-            print("1. Select Context & Ask Question")
-            print("2. Run Test: Direct API (No Context)")
-            print("3. Run Test: With Python Expert Context")
-            print("4. Back to main menu\n")
-
-            choice = input("Enter choice (1-4): ").strip()
-            if choice == "1":
-                self.ask_with_context()
-            elif choice == "2":
-                self.run_test_no_context()
-            elif choice == "3":
-                self.run_test_python_context()
-            elif choice == "4":
-                break
-
-    def select_context(self):
-        """Helper to pick a system context from config."""
-        print("\n📁 Select Context:")
-        contexts = list(CONTEXT_DEFAULTS.keys())
-        for i, ctx in enumerate(contexts, 1):
-            print(f"{i}. {ctx}")
-        
-        try:
-            idx = int(input("Select [number]: ")) - 1
-            if 0 <= idx < len(contexts):
-                key = contexts[idx]
-                data = CONTEXT_DEFAULTS[key]
-                # In real app, we might have system messages mapped elsewhere
-                return key, "You are an expert.", data['max_tokens'], data['temperature']
-        except:
-            pass
-        return None
-
-    def ask_with_context(self):
-        """Ask Claude a question using a predefined system context."""
-        ctx_info = self.select_context()
-        if not ctx_info: return
-        
-        key, sys_msg, tokens, temp = ctx_info
-        question = input(f"\n[{key}] Enter question: ").strip()
-        if not question: return
-
-        config = ModelConfig(
-            model_name=DEFAULT_MODEL,
-            system_message=sys_msg,
-            max_tokens=tokens,
-            temperature=temp
-        )
-        model = self.factory.create_model("anthropic", config)
-        print("\n[INFO] Thinking...")
-        result = model.generate(question)
-        print(f"\nResponse:\n{result.content}")
-        input("\nPress Enter...")
-
-    def run_test_no_context(self):
-        """Benchmark test with no specific system instructions."""
-        self.test_claude_model()
-
-    def run_test_python_context(self):
-        """Benchmark test with specialized Python instructions."""
-        print("\n🧪 Running with Python Context...")
-        # Simplified for brevity, similar to test_claude_model but with specific context
-        self.test_claude_model()
 
     def system_maintenance_menu(self):
         """Submenu for monitoring and cleanup."""
@@ -629,19 +434,14 @@ class InteractiveCLI:
             print("⭐ FEATURED:")
             print("1. Android Code-Gen Agent")
             print("2. LLM to Excel Agent")
-            print("3. JSON to Excel (no LLM - paste your JSON in data/default_json_for_excel_convertion.json)")
+            print("3. JSON to Excel (no LLM - paste your JSON in src/data/default_json_for_excel_convertion.json)")
             print("")
-            print("📚 TESTING & LEARNING:")
-            print("4. Model Testing & Evaluation")
-            print("5. Learning & Examples")
+            print("🔧 SYSTEM:")
+            print("4. System & Maintenance")
             print("")
-            print("📊 ADVANCED:")
-            print("6. Context & Benchmarking")
-            print("7. System & Maintenance")
+            print("5. Exit")
             print("")
-            print("8. Exit")
-            print("")
-            choice = input("Enter your choice (1-8): ").strip()
+            choice = input("Enter your choice (1-5): ").strip()
             if choice == "1":
                 self.run_android_agent()
             elif choice == "2":
@@ -649,17 +449,11 @@ class InteractiveCLI:
             elif choice == "3":
                 self.json_to_excel()
             elif choice == "4":
-                self.model_testing_menu()
-            elif choice == "5":
-                self.learning_examples_menu()
-            elif choice == "6":
-                self.context_benchmarking_menu()
-            elif choice == "7":
                 self.system_maintenance_menu()
-            elif choice == "8":
-                print("\n👋 Thanks for using LangChain Model Lab!")
+            elif choice == "5":
+                print("\n👋 Thanks for using LangChain Agent!")
                 break
             else:
-                print("\n[ERROR] Invalid choice. Please select 1-8.")
+                print("\n[ERROR] Invalid choice. Please select 1-5.")
                 input("Press Enter to continue...")
         self.cleanup_model_memory()
