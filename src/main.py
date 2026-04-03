@@ -21,13 +21,13 @@ from core.config import (
     DEFAULT_MODEL, DEFAULT_MAX_TOKENS, DEFAULT_TEMPERATURE,
     INTERACTIVE_MAX_TOKENS, RESPONSES_DIR
 )
-from core.dependency_injection import get_container
+from core.di import get_container
 
 # 1. Load environment variables (.env)
 # Like reading local.properties or BuildConfig in Android.
 load_dotenv()
 
-# 2. Setup Global Constants/Environment
+# 2. Setup Global Constants/Environment1
 hf_key = os.getenv("HUGGINGFACE_API_KEY")
 if hf_key:
     os.environ["HF_TOKEN"] = hf_key

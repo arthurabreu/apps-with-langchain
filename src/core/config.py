@@ -60,36 +60,12 @@ CREATIVE_TEMPERATURE = 0.7
 CODE_TEMPERATURE = 0.1
 
 # ============================================================================
-# CONTEXT-SPECIFIC DEFAULTS
-# ============================================================================
-
-# Default config overrides per context
-# Similar to Build Flavors or specific Config Objects.
-CONTEXT_DEFAULTS = {
-    "default": {
-        "model": DEFAULT_MODEL,
-        "max_tokens": DEFAULT_MAX_TOKENS,
-        "temperature": DEFAULT_TEMPERATURE,
-    },
-    "android": {
-        "model": DEFAULT_MODEL,
-        "max_tokens": INTERACTIVE_MAX_TOKENS,
-        "temperature": DEFAULT_TEMPERATURE,
-    },
-    "python": {
-        "model": DEFAULT_MODEL,
-        "max_tokens": INTERACTIVE_MAX_TOKENS,
-        "temperature": DEFAULT_TEMPERATURE,
-    },
-}
-
-# ============================================================================
 # FILE PATHS
 # ============================================================================
 
-TOKEN_USAGE_LOG = "data/token_usage.json"
-COSTS_LOG = "data/costs.json"
-RESPONSES_DIR = "responses"
+TOKEN_USAGE_LOG = "src/data/token_usage.json"
+COSTS_LOG = "src/data/costs.json"
+RESPONSES_DIR = "src/responses"
 
 # ============================================================================
 # API CONFIGURATION
@@ -105,22 +81,3 @@ ANTHROPIC_MAX_RETRIES = 3
 
 LOG_FORMAT = '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
 LOG_LEVEL = "INFO"
-
-# ============================================================================
-# TEST PROMPTS (Used for Model Evaluation)
-# ============================================================================
-
-TEST_PROMPTS = [
-    {
-        "name": "Kotlin Coroutine",
-        "prompt": "Write a Kotlin function that uses coroutines to fetch data from two APIs concurrently. Include error handling and timeouts."
-    },
-    {
-        "name": "Kotlin Palindrome",
-        "prompt": "Write a Kotlin function that checks if a string is a palindrome. Make it case-insensitive and ignore non-alphanumeric characters."
-    },
-    {
-        "name": "Explain Coroutines",
-        "prompt": "Explain Kotlin coroutines to a beginner. Keep it under 150 words."
-    }
-]

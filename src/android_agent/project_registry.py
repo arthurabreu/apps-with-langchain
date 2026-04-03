@@ -7,7 +7,7 @@ import json
 from pathlib import Path
 
 
-REGISTRY_FILE = Path("data") / "android_projects.json"
+REGISTRY_FILE = Path("src/data") / "android_projects.json"
 
 
 class ProjectRegistry:

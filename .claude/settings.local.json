@@ -24,7 +24,9 @@
       "Bash(.venv/bin/pip install:*)",
       "Bash(.venv/bin/python src/main.py)",
       "Bash(git push:*)",
-      "Bash(gh pr:*)"
+      "Bash(gh pr:*)",
+      "Bash(find:*)",
+      "Bash(python:*)"
     ]
   }
 }
