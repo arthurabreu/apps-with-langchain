@@ -314,22 +314,111 @@ Cost is estimated based on full collected response, not per-chunk.
 
 ---
 
-## Python → Kotlin Cheat Sheet (This File)
+## Key Python Concepts (This File)
 
-| Python | Kotlin | Where in this file |
-|--------|--------|------------------|
-| `for chunk in generator:` | `for (chunk in generator)` | Streaming loop |
-| `model.stream(prompt)` | `model.stream(prompt)` (LangChain interop) | Streaming call |
-| `print(..., end="", flush=True)` | `print(...); System.out.flush()` | Real-time output |
-| `hasattr(obj, 'attr')` | `obj is Type && obj.attr != null` | Attribute safety |
-| `chunk.content` | Property access | Getting chunk text |
-| `except AttributeError:` | `catch (e: AttributeError)` | Specific exception |
-| `response_chunks = []` | `val responseChunks = mutableListOf<String>()` | List accumulation |
-| `.append(item)` | `.add(item)` | List append |
-| `"".join(list)` | `list.joinToString("")` | Join strings |
-| `try: ... except Exception:` | `try { ... } catch (e: Exception)` | Error handling |
-| `f"${value:.6f}"` | `String.format("%.6f", value)` | Number formatting |
-| `metadata["chunks_count"]` | `metadata["chunksCount"]` | Dictionary access |
+### 1. **Generators and `for` Loops (`for chunk in generator:`)**
+
+```python
+for chunk in model.stream(formatted_prompt):
+    if hasattr(chunk, 'content') and chunk.content:
+        print(chunk.content, end="", flush=True)
+```
+
+A **generator** is a function that `yield`s values one at a time instead of returning all at once. LangChain's `model.stream()` returns a generator that yields chunks as the model produces them.
+
+The `for` loop consumes the generator, processing each chunk as it arrives. You can't know how many chunks there will be until the generator finishes.
+
+```python
+# Analogy: generator is like a stream of water
+for droplet in water_stream:  # Process each droplet as it arrives
+    process(droplet)
+```
+
+Without generators, you'd wait for the model to finish, collect all chunks, then process. With generators, you process as you go.
+
+### 2. **`print(..., end="", flush=True)` — Real-Time Console Output**
+
+```python
+print(chunk.content, end="", flush=True)
+```
+
+- `end=""` — don't add a newline after printing (keep on same line)
+- `flush=True` — write to console immediately (don't buffer)
+
+Without `flush=True`, Python might buffer output, delaying what the user sees by seconds. With it, text appears character-by-character as the model generates it.
+
+### 3. **`hasattr(obj, 'attr')` — Safe Attribute Access**
+
+```python
+if hasattr(chunk, 'content') and chunk.content:
+    # Safe to access chunk.content
+```
+
+`hasattr(obj, attr_name)` returns `True` if the object has that attribute, `False` otherwise. This prevents `AttributeError` if the attribute doesn't exist.
+
+Why use it? Different versions of LangChain might return different chunk types. By checking first, your code doesn't crash if an attribute is missing.
+
+### 4. **List Accumulation (`response_chunks = []`, `.append()`)**
+
+```python
+response_chunks = []
+
+for chunk in model.stream(...):
+    response_chunks.append(chunk.content)
+
+response_text = "".join(response_chunks)
+```
+
+Creating an empty list, then appending items in a loop is a common Python pattern:
+- `list = []` — empty list
+- `.append(item)` — add item to end
+- After loop, combine with `"".join(list)` to make one string
+
+### 5. **String Joining (`"".join(list)`)**
+
+```python
+response_text = "".join(response_chunks)  # ["hello", " ", "world"] → "hello world"
+```
+
+`"".join(sequence)` combines list items into one string with no separator. You can use any separator:
+- `"".join(list)` → no spaces
+- `", ".join(list)` → comma-separated
+- `"\n".join(list)` → newline-separated
+
+### 6. **Try-Except with Fallback**
+
+```python
+try:
+    for chunk in model.stream(...):
+        # streaming code
+except AttributeError:
+    # Model doesn't support streaming, fall back
+    response = model.invoke(...)
+    response_chunks = [response.content]
+```
+
+If streaming raises `AttributeError` (e.g., `.stream()` method doesn't exist), catch it and use synchronous `.invoke()` instead. This makes streaming **optional**—if the model doesn't support it, code still works.
+
+### 7. **Dictionary Access and Metadata**
+
+```python
+metadata={
+    "chunks_count": len(response_chunks)
+}
+```
+
+Storing structured data (like chunk count) in a dictionary for later retrieval. Later:
+```python
+count = metadata["chunks_count"]
+```
+
+### 8. **`len()` — Get Size of Collection**
+
+```python
+len(response_chunks)  # How many chunks were received
+```
+
+`len()` returns the number of items in a list, string, dict, etc. Useful for monitoring (e.g., how many chunks did streaming produce?).
 
 ---
 

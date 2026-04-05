@@ -1,6 +1,8 @@
 # Manual HuggingFace Model Download Guide
 
-If automatic downloads fail, you can download models manually using these methods.
+**📍 Advanced guide** | [← Back to Index](index.md) | [QUICK_START →](QUICK_START.md)
+
+> If automatic downloads fail, you can download models manually using these methods.
 
 ## Option 1: Using `huggingface-cli` (Easiest)
 
@@ -234,4 +236,10 @@ du -sh ~/HuggingFaceModels/
 - **HuggingFace Hub Issues**: https://github.com/huggingface/huggingface_hub/issues
 - **Transformers Library**: https://github.com/huggingface/transformers/issues
 - **Model Cards**: https://huggingface.co/models
+
+---
+
+**[← Previous](DEEPSEEK_INFO.md) | [Back to Index](index.md) | [Next →](QUICK_START.md)**
+
+*Want to get started quickly? See QUICK_START.md for the fastest path to a working model*
 

@@ -122,18 +122,116 @@ This is a convenience for quick experimentation without dealing with config obje
 
 ---
 
-## Python → Kotlin Cheat Sheet (This File)
+## Key Python Concepts (This File)
 
-| Python | Kotlin | Where in this file |
-|--------|--------|------------------|
-| `from .dependency_injection import get_container` | `import dependency_injection.getContainer` | Imports |
-| `def prompt_continue() -> bool:` | `fun promptContinue(): Boolean` | Function definition |
-| `def create_claude_model(...):` | `fun createClaudeModel(...)` | Function definition |
-| `container = get_container()` | `val container = getContainer()` | Getting singleton |
-| `container.get_user_interaction()` | `container.getUserInteraction()` | Method call |
-| Default parameters | `fun create(..., temperature: Float = 0.2f)` | Default argument values |
-| Return type annotation `-> bool` | `: Boolean` | Return type |
-| Docstring (triple quote) | KDoc `/** ... */` | Documentation |
+### 1. **Function Return Type Hints (`-> bool`)**
+
+```python
+def prompt_continue() -> bool:
+    """Return True to continue, False to skip"""
+    ...
+    return user_interaction.prompt_continue()
+```
+
+The `-> bool` after the function signature says "this function returns a boolean." It's a **type hint** for documentation and type checkers—Python doesn't enforce it at runtime, but it helps:
+- Developers understand what the function returns
+- Type checkers (`mypy`) catch bugs if you return the wrong type
+- IDE autocomplete knows what to expect
+
+### 2. **Default Parameters**
+
+```python
+def create_claude_model(
+    model_name: str = "claude-3-haiku-20240307",
+    temperature: float = 0.2,
+    max_tokens: int = 512
+):
+    ...
+```
+
+When a parameter has `= value`, it's optional. If the caller doesn't provide it, use the default:
+```python
+model = create_claude_model()  # Uses all defaults
+model = create_claude_model(model_name="claude-3-opus-20240229")  # Override one
+model = create_claude_model(temperature=0.8)  # Override a different one
+```
+
+**Important:** Parameters with defaults must come **after** parameters without defaults:
+```python
+# ✓ OK
+def func(required: str, optional: str = "default"):
+    pass
+
+# ✗ Bad
+def func(optional: str = "default", required: str):
+    pass  # SyntaxError!
+```
+
+### 3. **Docstrings (`"""..."""`)**
+
+```python
+def create_claude_model(...) -> ILanguageModel:
+    """
+    Create a Claude model with default configuration.
+    Backward compatibility function.
+
+    Args:
+        model_name: Claude model name
+        temperature: Sampling temperature
+        max_tokens: Maximum tokens to generate
+
+    Returns:
+        Configured Claude model instance
+    """
+    ...
+```
+
+The `"""..."""` triple-quoted string is a **docstring**—documentation attached to a function. It describes:
+- **What it does** (first line, short summary)
+- **Args:** what parameters it takes
+- **Returns:** what it returns
+- **Raises:** what exceptions it can raise (if applicable)
+
+Access docstrings at runtime:
+```python
+help(create_claude_model)  # Prints the docstring
+print(create_claude_model.__doc__)  # Get docstring as string
+```
+
+### 4. **Module-Level Functions (Not Methods)**
+
+```python
+def prompt_continue() -> bool:
+    """Prompt user to continue or skip"""
+    container = get_container()
+    ...
+```
+
+These are **module-level functions**—they're not attached to a class. Call them directly:
+```python
+from src.core.utils import prompt_continue
+should_continue = prompt_continue()
+```
+
+Unlike methods (which need `self`), module functions don't have instance state. They're useful for:
+- Utility functions
+- Facade/wrapper functions (as these are)
+- Top-level operations
+
+### 5. **Delegation Pattern (Wrapper Functions)**
+
+```python
+def prompt_continue() -> bool:
+    container = get_container()
+    user_interaction = container.get_user_interaction()
+    return user_interaction.prompt_continue()  # Delegate to real implementation
+```
+
+This is a **wrapper function**: it takes a simple request ("prompt the user") and delegates to a more complex service (the DI container and user interaction component). Benefits:
+- **Simplicity**: callers don't deal with the container
+- **Backward compatibility**: old code can use the simple function
+- **Testing**: can mock the container instead of the wrapper
+- **Flexibility**: can change implementation without changing callers
 
 ---
 

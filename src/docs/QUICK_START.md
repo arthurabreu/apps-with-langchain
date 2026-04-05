@@ -1,5 +1,9 @@
 # Quick Start: Download & Use HuggingFace Models
 
+**📍 Getting started guide** | [← Back to Index](index.md) | [Next: DEVELOPER_GUIDE.md →](DEVELOPER_GUIDE.md)
+
+> Download and use open-source models locally without API keys.
+
 ## 🚀 Fastest Path (5 minutes to ready)
 
 ### Step 1: Install CLI Tool (one-time setup)
@@ -189,3 +193,8 @@ huggingface-cli download mistralai/Mistral-7B-Instruct-v0.1 --cache-dir ~/Huggin
 
 Then open Android Agent! 🚀
 
+---
+
+**[← Previous](index.md) | [Back to Index](index.md) | [Next →](DEVELOPER_GUIDE.md)**
+
+*Ready to learn Python patterns? See DEVELOPER_GUIDE.md for Android/Kotlin developers*

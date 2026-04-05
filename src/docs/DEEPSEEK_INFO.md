@@ -1,5 +1,9 @@
 # DeepSeek V3.2 Model Integration
 
+**📍 Model information** | [← Back to Index](index.md) | [QUICK_START →](QUICK_START.md)
+
+> Information about using DeepSeek V3.2, a powerful open-source model.
+
 ## Quick Info
 
 **Model ID**: `deepseek-ai/DeepSeek-V3.2`
@@ -102,4 +106,10 @@ DeepSeek V3.2 is one of the latest open-source models with excellent quality, bu
 ---
 
 **Recommendation**: Start with Mistral 7B (option 1). Only use DeepSeek V3.2 if you specifically need the highest quality and have the infrastructure to support it.
+
+---
+
+**[← Previous](QUICK_START.md) | [Back to Index](index.md) | [Next →](DOWNLOAD_MODELS.md)**
+
+*Compare all available models: See QUICK_START.md for Mistral, Llama, and MiniMax info*
 

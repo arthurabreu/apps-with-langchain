@@ -1,6 +1,8 @@
 # MiniMax-M2.1 Integration Guide
 
-Complete guide for using MiniMax-M2.1 and other HuggingFace models in your LangChain project.
+**📍 Optional reference** | [← Back to Index](../index.md) | Read when: exploring alternative open-source models
+
+> Complete guide for using MiniMax-M2.1 and other HuggingFace models in your LangChain project.
 
 ## Overview
 
@@ -394,3 +396,9 @@ For issues or questions:
 
 - MiniMax-M2.1: Modified MIT
 - This integration: Follow your project license
+
+---
+
+**[← Back to Index](../index.md)**
+
+*Reference guide: See claude_model.md for Claude implementation, or strategies/ for generation approaches*

@@ -246,18 +246,108 @@ Raised by generation strategies.
 
 ---
 
-## Python → Kotlin Cheat Sheet (This File)
+## Key Python Concepts (This File)
 
-| Python | Kotlin | Where in this file |
-|--------|--------|------------------|
-| `class Child(Parent): pass` | `class Child : Parent()` | All exception classes |
-| `super().__init__(message)` | `super(Message)` or init in constructor | LangChainAppError |
-| `Optional[str]` | `String?` | error_code, context params |
-| `Optional[Dict[str, Any]]` | `Map<String, Any>?` | context field |
-| `def __str__(self)` | `override fun toString()` | LangChainAppError |
-| `raise SomeError(...)` | `throw SomeError(...)` | All usage sites |
-| `except SomeError:` | `catch (e: SomeError)` | Error handling code |
-| Multi-level inheritance | `class A : B`, `class B : C`, `class C : Exception` | Exception tree |
+### 1. **Exception Classes and Inheritance**
+
+```python
+class LangChainAppError(Exception):
+    """Root exception for all app errors"""
+    pass
+
+class ConfigurationError(LangChainAppError):
+    """Base for config-related errors"""
+    pass
+
+class ApiKeyError(ConfigurationError):
+    """API key is missing or invalid"""
+    pass
+```
+
+Python exceptions inherit from `Exception` (or a subclass). When you create custom exceptions:
+- **Root exception** (`LangChainAppError`) inherits from `Exception`
+- **Category exceptions** (`ConfigurationError`) inherit from root
+- **Specific exceptions** (`ApiKeyError`) inherit from category
+
+This creates a **hierarchy** so you can catch broadly or specifically:
+```python
+try:
+    something()
+except ApiKeyError:  # Catch only ApiKeyError
+    print("API key problem")
+except ConfigurationError:  # Catches ApiKeyError too (it's a subclass)
+    print("Some config problem")
+except LangChainAppError:  # Catches all app errors
+    print("Something went wrong")
+except Exception:  # Catches absolutely everything
+    print("Unknown error")
+```
+
+### 2. **`super().__init__()` — Calling Parent Constructor**
+
+```python
+class LangChainAppError(Exception):
+    def __init__(self, message: str, error_code: Optional[str] = None, context: Optional[Dict] = None):
+        super().__init__(message)  # Call Exception's __init__
+        self.message = message
+        self.error_code = error_code
+        self.context = context or {}
+```
+
+`super().__init__(message)` calls the parent class's constructor. This ensures `Exception` is properly initialized with the message. Without it, the exception might not print correctly.
+
+### 3. **`def __str__()` — Customize Exception Output**
+
+```python
+def __str__(self) -> str:
+    if self.error_code:
+        return f"[{self.error_code}] {self.message}"
+    return self.message
+```
+
+When you print an exception or use `str(exc)`, Python calls `__str__()`. Override it to customize output:
+```python
+exc = LangChainAppError("Invalid config", error_code="ERR_CONFIG")
+print(exc)  # Prints: [ERR_CONFIG] Invalid config
+```
+
+### 4. **Raising Exceptions with Context**
+
+```python
+raise ApiKeyError(
+    message="API key missing",
+    error_code="ERR_API_KEY_MISSING",
+    context={"provider": "anthropic", "required": True}
+)
+```
+
+You can pass custom fields to exceptions. The `context` dict lets you attach debugging info (what provider, what value was wrong, etc.) without overcomplicating the exception class.
+
+### 5. **Catching Specific Exception Types**
+
+```python
+try:
+    create_model("unknown-provider", config)
+except UnsupportedProviderError as e:
+    print(f"Provider error: {e.message}")
+    print(f"Available: {e.context.get('available_providers')}")
+except ModelError as e:
+    # Catches ModelInitializationError, ModelValidationError, etc.
+    print(f"Model problem: {e}")
+except LangChainAppError as e:
+    # Catch-all for any app exception
+    print(f"App error: {e}")
+```
+
+Catch specific exception types to handle different errors differently.
+
+### 6. **Exception Hierarchy Benefits**
+
+By organizing exceptions in a hierarchy, you:
+- **Avoid generic exceptions**: `except Exception:` catches everything (bad for debugging)
+- **Catch what you care about**: `except ApiKeyError:` is specific
+- **Catch categories**: `except ModelError:` catches all model-related errors
+- **Provide context**: Each exception can have rich `context` for debugging
 
 ---
 
