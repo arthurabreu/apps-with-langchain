@@ -210,22 +210,156 @@ These save typing and hide implementation details from callers.
 
 ---
 
-## Python → Kotlin Cheat Sheet (This File)
+## Key Python Concepts (This File)
 
-| Python | Kotlin | Where in this file |
-|--------|--------|------------------|
-| `TypeVar('T')` | `inline fun <reified T>` | Type parameter T |
-| `Type[T]` (class object) | `KClass<T>` or just `T::class` | interface parameter in register methods |
-| `Dict[str, Any]` | `Map<String, Any>` | _services, _singletons |
-| `Optional[DIContainer]` | `DIContainer?` | _container global |
-| `global _container` | Not needed; Kotlin uses `object` or `companion object` | Module-level singleton pattern |
-| `lambda: MyClass()` | `{ MyClass() }` lambda | Factory functions in register_factory |
-| `service_impl()` | `serviceImpl.invoke()` or just `serviceImpl()` | In get() when instantiating |
-| `__name__` attribute | `::class.simpleName` | Getting service name for registry key |
-| `.get()` dict method | `.get(key)` or `[key]?` | Retrieving from _services, _singletons |
-| `.get(key, default)` | `[key] ?: default` | In get() method fallback |
-| `raise ValueError()` | `throw IllegalArgumentException()` | Error handling in get() |
-| `if ... in dict:` | `if (key in map)` or `map.containsKey(key)` | Checking if service registered |
+### 1. **TypeVar — Generic Type Parameters**
+
+```python
+from typing import TypeVar
+
+T = TypeVar('T')  # A placeholder for any type
+
+def get(self, interface: Type[T]) -> T:
+    # Means: "whatever type you pass in, I return the same type"
+    # get(ConfigurationManager) -> ConfigurationManager instance
+    # get(TokenManager) -> TokenManager instance
+```
+
+`TypeVar('T')` creates a **type variable** that represents "some type." When you see `Type[T] -> T`, it means "pass a class, get an instance of that class." Helps the type checker track types through generic functions.
+
+### 2. **`global` Keyword — Module-Level Variables**
+
+```python
+_container: Optional[DIContainer] = None  # Module-level variable
+
+def get_container() -> DIContainer:
+    global _container  # Tell Python this function modifies the global variable
+    if _container is None:
+        _container = DIContainer()
+    return _container
+```
+
+In Python, if you want to **modify** a global variable inside a function, you must declare `global name` first. Otherwise, assignment creates a local variable.
+
+```python
+# Without global
+x = 10
+def func():
+    x = 20  # Creates local x, doesn't change global
+    
+func()
+print(x)  # 10 (global unchanged)
+
+# With global
+x = 10
+def func():
+    global x
+    x = 20  # Modifies global
+    
+func()
+print(x)  # 20 (global changed)
+```
+
+### 3. **Lambda Functions — Inline Function Creation**
+
+```python
+self.register_factory(
+    ConfigurationManager,
+    lambda: ConfigurationManager()  # Lambda creates function inline
+)
+```
+
+A **lambda** is a short function in one line. Syntax: `lambda arguments: expression`. Examples:
+```python
+lambda x: x * 2          # Function that returns x*2
+lambda x, y: x + y       # Function with multiple args
+lambda: MyClass()        # No args, just create and return instance
+```
+
+Lambdas are useful for short, one-off functions. For longer logic, use `def`.
+
+### 4. **`__name__` — Class/Object Name as String**
+
+```python
+service_name = interface.__name__
+# ConfigurationManager -> "ConfigurationManager"
+# TokenManager -> "TokenManager"
+```
+
+`__name__` is an attribute containing the object's name as a string. Useful for dictionaries where the key is the type name:
+```python
+self._services[interface.__name__] = ('singleton', implementation)
+# Stores under string key: "ConfigurationManager" -> (singleton impl)
+```
+
+### 5. **Dictionary for Service Registry**
+
+```python
+self._services: Dict[str, Any] = {}
+# Key: service name (string)
+# Value: (type, impl) tuple or instance
+
+self._singletons: Dict[str, Any] = {}
+# Key: service name (string)
+# Value: created instance
+```
+
+`_services` stores service **definitions** (not yet created), while `_singletons` stores **created instances** (cached singletons).
+
+### 6. **Checking Existence and Retrieving with `.get()`**
+
+```python
+if service_name in self._singletons:
+    return self._singletons[service_name]  # Return cached instance
+    
+if service_name not in self._services:
+    raise ValueError(f"Service {service_name} not registered")
+
+service_type, service_impl = self._services[service_name]
+```
+
+- `if key in dict:` — check if key exists
+- `self._singletons[service_name]` — access value (raises if missing)
+- `.get(key, default)` — safely access with default if missing
+
+### 7. **Optional Type (`Optional[DIContainer]`)**
+
+```python
+_container: Optional[DIContainer] = None
+```
+
+`Optional[DIContainer]` means "either a `DIContainer` instance or `None`." Used when a value might not exist yet (like before the container is created).
+
+### 8. **Tuple Unpacking**
+
+```python
+service_type, service_impl = self._services[service_name]
+# _services[name] = ('singleton', ConfigurationManager)
+# Unpacks into: service_type = 'singleton', service_impl = ConfigurationManager
+```
+
+Tuples can be "unpacked"—split into individual variables. Useful when functions return multiple values.
+
+### 9. **Conditional Expression (Ternary)**
+
+```python
+if service_type == 'singleton':
+    instance = service_impl()  # Call class to instantiate
+    self._singletons[service_name] = instance
+    return instance
+elif service_type == 'factory':
+    return service_impl()  # Call factory function
+```
+
+Different actions based on `service_type`. If it's 'singleton', instantiate once and cache. If 'factory', call every time.
+
+### 10. **Exception Raising with Context**
+
+```python
+raise ValueError(f"Service {service_name} not registered")
+```
+
+Raise an exception with a helpful error message. The f-string includes the service name so developers know what was requested.
 
 ---
 

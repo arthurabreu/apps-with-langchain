@@ -224,21 +224,101 @@ Each operation type ("standard_prompt", "standard_response") is logged separatel
 
 ---
 
-## Python → Kotlin Cheat Sheet (This File)
+## Key Python Concepts (This File)
 
-| Python | Kotlin | Where in this file |
-|--------|--------|------------------|
-| `def generate(self, model: Any, ...)` | `fun generate(model: Any, ...): GenerationResult` | Main method |
-| `config.system_message or "default"` | `config.systemMessage ?: "default"` | Default value |
-| `f"{msg} {var}"` | `"$msg $var"` string template | F-string |
-| `model.invoke(prompt)` | `model.invoke(prompt)` or LangChain interop | Synchronous call |
-| `response.content` | Property access | Getting response text |
-| `try: ... except Exception as e:` | `try { ... } catch (e: Exception)` | Error handling |
-| `self.logger.error()` | `Log.e(tag, msg)` | Logging |
-| `raise GenerationError()` | `throw GenerationError()` | Raising exceptions |
-| `self.user_interaction.display_info()` | `userInteraction.displayInfo()` | Method call |
-| `.get_usage_summary()` | `.getUsageSummary()` | Method call |
-| `f"${value:.6f}"` | `String.format("%.6f", value)` | Number formatting |
+### 1. **`config.system_message or "default"` — Default Values with `or`**
+
+```python
+system_msg = config.system_message or "You are a helpful assistant."
+```
+
+If `config.system_message` is `None` or falsy (empty string), use the default. This is shorthand for:
+```python
+if config.system_message:
+    system_msg = config.system_message
+else:
+    system_msg = "You are a helpful assistant."
+```
+
+### 2. **F-Strings for Formatting (`f"...{variable}..."`)**
+
+```python
+full_prompt = f"{system_msg}\n{prompt}"
+self.user_interaction.display_info(f"- Input tokens: {prompt_tokens}")
+```
+
+F-strings let you embed variables directly in strings:
+- `f"{value:.6f}"` formats a number with 6 decimal places: `0.000250` for `0.00025`
+- `f"text {var}"` substitutes the variable's value
+
+Without f-strings, you'd write:
+```python
+display_info(f"- Input tokens: {prompt_tokens}")
+# vs
+display_info("- Input tokens: " + str(prompt_tokens))
+```
+
+### 3. **LangChain's `.invoke()` — Synchronous Model Call**
+
+```python
+response = model.invoke(formatted_prompt)  # Blocks until response arrives
+response_text = response.content
+```
+
+`invoke()` is synchronous—execution pauses here until the model responds. The function doesn't return until you have the full response. Contrast with `.stream()` (asynchronous, returns chunks over time).
+
+### 4. **Accessing Object Attributes (`response.content`)**
+
+```python
+response_text = response.content
+```
+
+`response` is an object (likely a LangChain `AIMessage`). `.content` is an attribute holding the text. Same as `response.get("content")` for dicts, but for objects.
+
+### 5. **Try-Except-Raise Error Wrapping**
+
+```python
+try:
+    response = model.invoke(formatted_prompt)
+except Exception as e:
+    error_msg = f"Standard generation failed: {e}"
+    self.logger.error(error_msg)
+    raise GenerationError(error_msg)
+```
+
+This pattern:
+1. **Try** the operation
+2. **Catch** any exception as `e`
+3. **Log** the error (for debugging)
+4. **Raise** a domain-specific exception (`GenerationError`)
+
+This wraps low-level errors (network failures, API errors) in a high-level exception that callers expect.
+
+### 6. **Dictionary/Object Creation with Metadata**
+
+```python
+metadata={
+    "prompt_tokens": prompt_tokens,
+    "response_tokens": response_tokens,
+    "model": config.model_name,
+    "system_message": system_msg
+}
+```
+
+Creating a dictionary with named key-value pairs. Useful for attaching context to results. Later, retrieve with `metadata["prompt_tokens"]`.
+
+### 7. **Math Operations and Formatting**
+
+```python
+est_cost = self.token_manager.estimate_cost(...)
+self.user_interaction.display_info(f"- Estimated input cost: ${est_cost:.6f}")
+```
+
+The format `:.6f` means:
+- `:` — start format specification
+- `6f` — six decimal places, floating-point
+
+So `0.000250` displays as `"$0.000250"`.
 
 ---
 

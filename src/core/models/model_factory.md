@@ -258,22 +258,100 @@ def create_model(self, provider: str, config: ModelConfig) -> ILanguageModel:
 
 ---
 
-## Python → Kotlin Cheat Sheet (This File)
+## Key Python Concepts (This File)
 
-| Python | Kotlin | Where in this file |
-|--------|--------|------------------|
-| `Dict[str, Type[ILanguageModel]]` | `Map<String, KClass<out ILanguageModel>>` | _model_registry |
-| `Type[ILanguageModel]` | `KClass<out ILanguageModel>` | model_class parameter |
-| `self._model_registry[key]` | `modelRegistry[key]` | Registry lookup |
-| `provider.lower()` | `provider.lowercase()` (Kotlin 1.5+) | Normalize provider name |
-| `if key not in dict:` | `if (!dict.containsKey(key))` or `if (key !in dict)` | Check registry |
-| `.keys()` | `.keys` | Get registry keys |
-| `", ".join(list)` | `list.joinToString(", ")` | Join strings |
-| `raise UnsupportedProviderError()` | `throw UnsupportedProviderError()` | Raise exception |
-| `config.api_key = value` | `config.apiKey = value` | Set field |
-| `if not value:` | `if (value == null) {}` | Null/falsy check |
-| `list[str]` return type | `List<String>` | Return type annotation |
-| `logger.info()` | `Log.i(tag, msg)` | Logging |
+### 1. **Type Hints with Class Objects (`Type[ILanguageModel]`)**
+
+```python
+self._model_registry: Dict[str, Type[ILanguageModel]] = {
+    "anthropic": ClaudeModel,  # Store class objects, not instances
+}
+```
+
+`Type[ILanguageModel]` means "a class object that implements ILanguageModel" (not an instance). So:
+
+- `Type[ILanguageModel]` = the class itself: `ClaudeModel`, `OpenAIModel`, etc.
+- `ILanguageModel` = an instance of the class: `ClaudeModel(...)`
+
+When you store `ClaudeModel` in the registry, you later instantiate it:
+```python
+model_class = self._model_registry[provider_lower]  # Get the class
+instance = model_class(config, ...)  # Call it to create instance
+```
+
+This is how **factories** work—they store class blueprints and instantiate them on demand.
+
+### 2. **Dictionary with Class Values**
+
+```python
+Dict[str, Type[ILanguageModel]]  # "anthropic" → ClaudeModel class
+```
+
+Regular dictionary is `Dict[str, str]` (keys and values are both strings). This one maps strings to **class objects**. It's a registry pattern—you look up the provider name and get the class to instantiate.
+
+### 3. **`provider.lower()` — String Normalization**
+
+```python
+provider_lower = provider.lower()
+if provider_lower not in self._model_registry:
+    # ...
+```
+
+`lower()` converts to lowercase: `"Anthropic"` → `"anthropic"`. This makes lookups case-insensitive so "ANTHROPIC", "Anthropic", and "anthropic" all work.
+
+### 4. **`"key" in dict` and `"key" not in dict`**
+
+```python
+if provider_lower not in self._model_registry:
+    raise UnsupportedProviderError(...)
+```
+
+- `key in dict` → `True` if key exists, `False` otherwise
+- `key not in dict` → opposite
+
+Unlike `.get()` which returns a value, `in` just checks existence.
+
+### 5. **`", ".join(list)` — Join Strings with Separator**
+
+```python
+available = ", ".join(self._model_registry.keys())
+# If keys are ["anthropic", "openai"], result is "anthropic, openai"
+```
+
+`", ".join(sequence)` combines list items into one string with `", "` between them. Useful for error messages like:
+```
+"Available providers: anthropic, openai"
+```
+
+### 6. **`if not value:` — Falsy Checks**
+
+```python
+if not config.api_key:
+    config.api_key = self.config_manager.get_api_key(provider_lower)
+```
+
+In Python, many values are **falsy**: `None`, `""` (empty string), `0`, `[]` (empty list), etc.
+
+`if not config.api_key:` checks if the API key is falsy (missing, empty, or None). If so, fetch it from config.
+
+### 7. **Logging with Context (`f"...{variable}..."`)**
+
+```python
+self.logger.info(f"Creating {provider} model: {config.model_name}")
+```
+
+`f"..."` (f-string) embeds variables in strings:
+- `f"Creating {provider} model"` becomes `"Creating anthropic model"` if `provider = "anthropic"`
+- Easier than string concatenation: `"Creating " + provider + " model"`
+
+### 8. **Modifying Config Objects**
+
+```python
+if not config.api_key:
+    config.api_key = self.config_manager.get_api_key(provider_lower)
+```
+
+`config` is an object (likely a `@dataclass`). You can assign to its fields to modify it. This mutates the config in-place; if the caller has a reference to it, they see the change.
 
 ---
 

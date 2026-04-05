@@ -21,7 +21,7 @@ Key features:
 - Token counting using tokenizer
 - Proper cleanup (free GPU/CPU memory after use)
 
-**Note:** This is **experimental/educational**. Current model registry maps to a Kotlin model which may not be ideal for all tasks.
+**Note:** This is **experimental/educational**. Use for learning and comparison, not yet integrated into the main application flow.
 
 ---
 
@@ -74,17 +74,6 @@ def _select_device() -> Tuple[str, torch.dtype]:
 ```
 
 **Module-level function** (not a method) because it's a stateless utility. Call it once at model load time to choose device.
-
-**Kotlin equivalent:**
-```kotlin
-fun selectDevice(): Pair<String, TorchDtype> {
-    return when {
-        cuda.isAvailable() -> "cuda" to TorchDtype.FLOAT16
-        torch.backends.mps.isAvailable() -> "mps" to TorchDtype.FLOAT16
-        else -> "cpu" to TorchDtype.FLOAT32
-    }
-}
-```
 
 ---
 
@@ -197,8 +186,6 @@ def _initialize_model(self):
 
 **Pattern:** Check if already initialized (`if self._pipeline is None`), only load once. This is **lazy initialization** — defer work until needed.
 
-**Kotlin equivalent:** `by lazy { initialize() }` delegate
-
 ---
 
 ### generate()
@@ -289,22 +276,142 @@ model.use { m -> m.generate("Hello") }
 
 ---
 
-## Python → Kotlin Cheat Sheet (This File)
+## Key Python Concepts (This File)
 
-| Python | Kotlin | Where in this file |
-|--------|--------|------------------|
-| `Tuple[str, torch.dtype]` | `Pair<String, TorchDtype>` | _select_device return |
-| `torch.cuda.is_available()` | CUDA availability check in Kotlin | _select_device |
-| `threading.Thread(target=func)` | `thread { func() }` | LoadingSpinner |
-| `daemon=True` | `isDaemon = true` | LoadingSpinner thread |
-| `Optional[str]` | `String?` | method params |
-| `if self._pipeline is None` | `if (_pipeline == null)` | Lazy init pattern |
-| `AutoTokenizer.from_pretrained(...)` | HF Java/Kotlin library equivalent | _initialize_model |
-| `**kwargs` | Kotlin named params or `vararg` | generate method |
-| `del obj` | No equivalent (auto GC); manual cleanup | cleanup() |
-| `gc.collect()` | `System.gc()` | cleanup() |
-| `__enter__` / `__exit__` | `Closeable.use {}` | Context manager |
-| `os.getenv("KEY")` | `System.getenv("KEY")` | Loading from env |
+### 1. **Tuple — Ordered Immutable Pairs**
+
+```python
+def _select_device() -> Tuple[str, torch.dtype]:
+    # Returns (device_name, dtype) as a tuple
+    return "cuda", torch.float16
+    
+# Unpack on use
+device, dtype = _select_device()
+```
+
+A **tuple** is like a list but immutable (can't change). `Tuple[str, torch.dtype]` means "a pair: first element is str, second is dtype." Return multiple values from a function using tuples.
+
+### 2. **Conditional Expression (Ternary) with `when`-like Logic**
+
+```python
+if torch.cuda.is_available():
+    device = "cuda"
+    dtype = torch.float16
+elif torch.backends.mps.is_available():
+    device = "mps"
+    dtype = torch.float16
+else:
+    device = "cpu"
+    dtype = torch.float32
+return device, dtype
+```
+
+This is multi-way branching. `if/elif/else` chains evaluate conditions in order and execute the first matching branch.
+
+### 3. **Threading — Running Code in Background**
+
+```python
+import threading
+
+class LoadingSpinner:
+    def start(self):
+        self.busy = True
+        self.spinner_thread = threading.Thread(target=self.spin)
+        self.spinner_thread.daemon = True  # Die when main thread exits
+        self.spinner_thread.start()
+```
+
+`threading.Thread(target=func)` creates a new thread running `func()` in parallel with main code. `daemon=True` means the thread dies automatically when the main thread exits (won't block shutdown).
+
+Why? Loading models takes minutes. Running in a background thread lets you show a spinner while the main thread waits for the model.
+
+### 4. **Lazy Initialization Pattern**
+
+```python
+def __init__(self):
+    self._pipeline = None  # Not loaded yet
+    
+def _initialize_model(self):
+    if self._pipeline is not None:
+        return self._pipeline  # Already loaded
+    
+    # Load for the first time
+    self._pipeline = pipeline(...)
+    return self._pipeline
+    
+def generate(self, prompt):
+    if self._pipeline is None:
+        self._initialize_model()  # Lazy: load on first use
+    # Use pipeline
+```
+
+**Lazy initialization** defers expensive operations until needed:
+- Constructor is fast (doesn't load the model)
+- First `generate()` call loads the model (slow)
+- Subsequent `generate()` calls are fast (model cached)
+
+Benefits:
+- Quick object creation
+- Only pay the cost if you use it
+- Common in Python for resource-heavy objects
+
+### 5. **`del` and `gc.collect()` — Manual Memory Management**
+
+```python
+def cleanup(self):
+    del self._pipeline   # Delete reference
+    del self._model
+    del self._tokenizer
+    
+    import gc
+    gc.collect()  # Force garbage collection
+    
+    if torch.cuda.is_available():
+        torch.cuda.empty_cache()  # Free GPU memory
+```
+
+Python has automatic garbage collection, but GPU memory doesn't always free automatically. `del` removes the reference, `gc.collect()` forces the garbage collector to run, and `torch.cuda.empty_cache()` explicitly frees GPU memory.
+
+Why? GPU memory is precious. Explicit cleanup ensures you free it so other programs can use it.
+
+### 6. **Context Managers (`__enter__` / `__exit__`)**
+
+```python
+def __enter__(self):
+    return self
+
+def __exit__(self, exc_type, exc_val, exc_tb):
+    self.cleanup()  # Always called on exit
+
+# Usage
+with LocalHuggingFaceModel(...) as model:
+    result = model.generate("Hello")
+# cleanup() called automatically here
+```
+
+Context managers (`with` statement) ensure cleanup code runs, even if an exception occurs. Define:
+- `__enter__()` — called at start (`with`)
+- `__exit__()` — called at end (whether success or error)
+
+Benefits:
+- Automatic cleanup (no forgetting to call `.cleanup()`)
+- Exception-safe (cleanup runs even if `generate()` crashes)
+
+### 7. **`Closeable` and `.use {}`**
+
+Python 3's `with` statement is similar to Kotlin's `.use {}` or Java's try-with-resources. Both ensure cleanup.
+
+### 8. **Environment Variables with `os.getenv()`**
+
+```python
+import os
+
+api_key = os.getenv("HUGGINGFACE_API_KEY")
+# Get from .env or environment variable
+# Returns None if not set (unlike os.environ["KEY"] which raises)
+```
+
+`os.getenv(key, default)` safely reads environment variables. Safe because it returns `None` (or default) if the variable doesn't exist, instead of raising an error.
 
 ---
 

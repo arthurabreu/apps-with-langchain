@@ -273,20 +273,119 @@ def register_model(provider: str, model_class: type) -> None: ...
 
 ---
 
-## Python → Kotlin Cheat Sheet (This File)
+## Key Python Concepts (This File)
 
-| Python | Kotlin | Where in this file |
-|--------|--------|------------------|
-| `Enum` with `STANDARD = "standard"` | `enum class GenerationStrategy { STANDARD, STREAMING }` | GenerationStrategy |
-| `@dataclass` on class | `data class ModelConfig(...)` | ModelConfig, GenerationResult |
-| `Optional[str]` | `String?` | All type hints |
-| `list[str]` | `List<String>` | IUserPrompt.prompt_choice() |
-| `Dict[str, Any]` | `Map<String, Any>` | ITokenManager, return types |
-| `Protocol` from typing | Kotlin `interface` (structural, no explicit impl) | All token/user/strategy protocols |
-| `ABC` from abc | `abstract class` | ILanguageModel |
-| `@abstractmethod` | `abstract fun` | ILanguageModel methods |
-| `@property` + `@abstractmethod` | `abstract val` (computed) | ILanguageModel.provider |
-| `def func(x: str) -> bool:` type hints | `fun func(x: String): Boolean` | All methods |
+### 1. **Enums vs Strings**
+
+```python
+class GenerationStrategy(Enum):
+    STANDARD = "standard"
+    STREAMING = "streaming"
+```
+
+An **Enum** is a fixed set of named constants. Instead of passing strings like `"standard"` or `"streaming"` (which can have typos), you use `GenerationStrategy.STANDARD`. The type checker ensures you only pass valid enum values. Use as:
+
+```python
+config.generation_strategy = GenerationStrategy.STANDARD  # Type-safe
+# vs
+config.generation_strategy = "standard"  # Prone to typos: "standart" would compile
+```
+
+### 2. **@dataclass — Automatic Constructor and Methods**
+
+```python
+@dataclass
+class ModelConfig:
+    model_name: str
+    temperature: float = 0.2
+    max_tokens: int = 512
+```
+
+The `@dataclass` decorator automatically generates:
+- `__init__` with all fields as parameters
+- `__repr__` for nice string representation
+- `__eq__` for equality comparison
+
+You can now use:
+```python
+config = ModelConfig(model_name="claude-3-haiku", temperature=0.5)
+print(config)  # ModelConfig(model_name='...', temperature=0.5, max_tokens=512)
+```
+
+Without `@dataclass`, you'd manually write a long `__init__`. Also note: fields with defaults (like `temperature = 0.2`) must come **after** fields without defaults (like `model_name`).
+
+### 3. **Type Hints and Optional**
+
+```python
+api_key: Optional[str] = None
+```
+
+`Optional[str]` means "either `str` or `None`" — useful for values that might not be provided. In function signatures:
+
+```python
+def get(self, key: str, default: Optional[str] = None) -> Optional[str]:
+    # key: required string
+    # default: optional string (defaults to None if not provided)
+    # returns: optional string
+```
+
+### 4. **Protocol vs ABC**
+
+**Protocols** (structural typing):
+```python
+class ITokenCounter(Protocol):
+    def count_tokens(self, text: str, model_name: str) -> int: ...
+```
+
+You don't inherit; just implement the method. The type checker verifies you have it.
+
+**ABC** (explicit inheritance):
+```python
+class ILanguageModel(ABC):
+    @abstractmethod
+    def generate(self, prompt: str) -> GenerationResult: ...
+```
+
+You must explicitly `class MyModel(ILanguageModel):` and implement the method. Failures are caught at runtime, not just type-check time.
+
+**When to use which?**
+- **Protocol**: For loose coupling, multiple interfaces mixed together
+- **ABC**: When you want to enforce a contract, add shared setup code in `__init__`
+
+### 5. **@abstractmethod and @property**
+
+```python
+class ILanguageModel(ABC):
+    @abstractmethod
+    def generate(self, prompt: str) -> GenerationResult: ...
+    
+    @property
+    @abstractmethod
+    def provider(self) -> str: ...
+```
+
+- **@abstractmethod**: Subclasses *must* implement this method or they can't be instantiated
+- **@property**: Makes the method act like an attribute: `model.provider` instead of `model.provider()`
+- **Combination**: The subclass implements it as `@property def provider(self) -> str: return "Anthropic"`
+
+### 6. **Generic Types and `Any`**
+
+```python
+Dict[str, Any]  # Dictionary with string keys, values of any type
+List[str]       # List of strings
+Optional[Dict]  # Either a Dict or None
+```
+
+`Any` is a wildcard type meaning "I don't know or don't care what this is." Use sparingly because it defeats the type checker. `Dict` without type parameters defaults to `Dict[Any, Any]`.
+
+### 7. **Combining Protocols with Inheritance**
+
+```python
+class ITokenManager(ITokenCounter, ICostEstimator, IUsageTracker, Protocol): 
+    pass
+```
+
+This creates a **composed interface** that includes methods from three other protocols. Any object implementing all three protocols satisfies `ITokenManager`. This is the **Interface Segregation Principle**: break interfaces into small, focused ones, then compose them as needed.
 
 ---
 

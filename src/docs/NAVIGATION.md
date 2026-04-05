@@ -1,4 +1,8 @@
-# Navigation Guide for src/core/ Documentation
+# Navigation Guide
+
+**📍 Getting help** | [← Back to Index](index.md) | [Core Docs →](../core/index.md)
+
+> Learn how to navigate the project documentation.
 
 ## 📚 How to Use These Docs
 
@@ -120,4 +124,6 @@ Explore these as needed for specific topics:
 
 ---
 
-*Generated: 2026-03-13 | For Python learners with Android background*
+**[← Previous](QUICK_START.md) | [Back to Index](index.md) | [Next →](../core/index.md)**
+
+*Ready to dive into the code? Start with the Core Architecture guide*

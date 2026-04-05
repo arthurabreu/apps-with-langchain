@@ -183,26 +183,85 @@ logger.info("Claude model initialized")
 
 ---
 
-## Python → Kotlin Cheat Sheet (This File)
+## Key Python Concepts (This File)
 
-| Python | Kotlin | Where in this file |
-|--------|--------|------------------|
-| `class ApiKeyValidator:` | `class ApiKeyValidator` | ApiKeyValidator |
-| `def validate_key(self, ...)` | `fun validateKey(...)` | ApiKeyValidator.validate_key |
-| `os.getenv("KEY")` | `System.getenv("KEY")` in Java; Kotlin uses Java interop | ConfigurationManager |
-| `logging.getLogger(__name__)` | `Timber.tag(...)` (if using Timber) or `Log.d(tag, ...)` | ConsoleUserInteraction, LoggingService |
-| `logger.info(msg)` | `Timber.i(msg)` or `Log.i(tag, msg)` | All loggers |
-| `__init__(self, logger: Logger = None):` | `constructor(logger: Logger? = null)` | ConsoleUserInteraction, LoggingService |
-| `raise ApiKeyError(...)` | `throw ApiKeyError(...)` | ApiKeyValidator.validate_key |
-| `any(x in s for x in list)` | `list.any { x in s }` | ApiKeyValidator (checking placeholder_indicators) |
-| `while True:` with `break` | `while (true)` with `break` | ConsoleUserInteraction.prompt_continue |
-| `input(prompt)` | Android: `readLine()` or user input via UI; Kotlin CLI: `readLine()` | ConsoleUserInteraction |
-| `print(f"[INFO] {msg}")` | `println("[INFO] $msg")` | display_info, display_error, display_warning |
-| `dict.get(key, default)` | `map[key] ?: default` | ConfigurationManager.get |
-| `dict[key] = value` | `map[key] = value` | ConfigurationManager.set |
-| `logging.basicConfig(...)` | No direct equivalent; use `Log.setLevel(...)` or SLF4J configuration | LoggingService._setup_logging |
-| `logging.StreamHandler()` | Android: output to Logcat; Kotlin JVM: `System.out` stream | LoggingService |
-| `logging.FileHandler(path)` | Android: write to app's cache/files directory; Kotlin JVM: `FileOutputStream` | LoggingService |
+### 1. **`__init__` and Instance Attributes (self.variable)**
+
+The `__init__` method is Python's constructor. When you write:
+
+```python
+class ConfigurationManager:
+    def __init__(self):
+        self._config = {}  # Create instance variable
+        self._load_from_env()
+```
+
+The line `self._config = {}` creates an **instance attribute**—a variable that belongs to this specific object. Every instance of `ConfigurationManager` has its own `_config` dictionary. The underscore prefix (`_config` instead of `config`) is a Python convention meaning "private or internal—don't access this directly from outside the class."
+
+Why use `self.variable = {}`? Because then all methods in the class can access it via `self.variable`. Without storing it on `self`, it would be a local variable that disappears when `__init__` finishes.
+
+### 2. **Default Parameters (`logger: logging.Logger = None`)**
+
+```python
+def __init__(self, logger: logging.Logger = None):
+    self.logger = logger or logging.getLogger(__name__)
+```
+
+The `= None` means "if the caller doesn't provide `logger`, default to `None`." The line `logger or logging.getLogger(__name__)` uses Python's `or` operator: if `logger` is `None` (falsy), create a new logger. This pattern lets you optionally inject a logger for testing, or use a default one if you don't provide one.
+
+### 3. **Underscore Prefixes in Python**
+
+- **`_private_var`** (single underscore) — "This is internal; don't use it from outside the class." It's a **convention**, not enforced. Python still lets you access it, but you're breaking a contract.
+- **`__dunder_var`** (double underscore) — **Name mangling** applies. Python actually renames this to `_ClassName__dunder_var` to make accidental override harder. Rarely used; single underscore is preferred.
+- **`regular_var`** — Public; intended for external use.
+
+In this file, `_config` and `_load_from_env()` both use single underscores to signal they're implementation details, not part of the public API.
+
+### 4. **Class Methods vs Instance Methods**
+
+All methods in this file are **instance methods** (operate on one object):
+
+```python
+class ConfigurationManager:
+    def __init__(self):
+        self._config = {}
+    
+    def get(self, key, default=None):
+        return self._config.get(key, default)  # Uses self._config
+```
+
+When you call `config.get("key")`, Python automatically passes `config` as `self`. You never explicitly write `self` in the call.
+
+### 5. **Dictionary `.get()` Method**
+
+```python
+value = dict.get(key, default_value)
+```
+
+If `key` exists, return its value. If not, return `default_value` (or `None` if no default given). This is safer than `dict[key]` which raises `KeyError` if the key is missing.
+
+### 6. **Logging Setup (`logging.basicConfig`, handlers)**
+
+```python
+def _setup_logging(self) -> None:
+    logging.basicConfig(level=log_level)
+    handler = logging.FileHandler("app.log")
+    # ...
+```
+
+Python's `logging` module manages **handlers** — destinations where log messages go. `StreamHandler` sends to console, `FileHandler` sends to a file. You can attach multiple handlers to the same logger so messages go to both console and file simultaneously.
+
+### 7. **`@property` (Read-Only Fields)**
+
+Some classes expose attributes as properties:
+
+```python
+@property
+def logger(self):
+    return self._logger
+```
+
+This makes `obj.logger` readable like a field, but it's actually calling a method. Useful for computed values or controlled access.
 
 ---
 

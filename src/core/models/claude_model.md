@@ -231,25 +231,113 @@ Returns provider name. Used by other code to identify model origin.
 
 ---
 
-## Python → Kotlin Cheat Sheet (This File)
+## Key Python Concepts (This File)
 
-| Python | Kotlin | Where in this file |
-|--------|--------|------------------|
-| `class ClaudeModel(ILanguageModel):` | `class ClaudeModel(ILanguageModel)` | Class definition |
-| `super().__init__(config)` | `super(config)` | Calling parent constructor |
-| `self._model = None` | `private var _model: ChatAnthropic? = null` | Instance field |
-| `def __init__(self, ...)` | `constructor(...)` | Constructor |
-| `raise SomeError()` | `throw SomeError()` | Raising exceptions |
-| `except Exception as e` | `catch (e: Exception)` | Catching exceptions |
-| `.get(key)` dict method | `.get(key)` or `[key]` | Dictionary access |
-| `if not value:` | `if (!value) {}` or `if (value == null)` | Negation/null check |
-| `@property` | `val` or computed property | Provider property |
-| `@abstractmethod` override | `override fun` | Overriding abstract method |
-| `Dict[str, Any]` | `Map<String, Any>` | Return type |
-| `logger.info()`, `error()` | `Log.i(tag, msg)` or `Timber.i(msg)` | Logging |
-| `**kwargs` | Named parameters or `vararg` | Additional parameters |
-| `.get(key, default)` | `[key] ?: default` | Dictionary with default |
-| `if ... in dict` | `if (key in dict)` or `.containsKey(key)` | Key existence check |
+### 1. **Calling Parent Constructor with `super().__init__()`**
+
+```python
+class ClaudeModel(ILanguageModel):
+    def __init__(self, config, token_manager, user_interaction, logger):
+        self.token_manager = token_manager
+        self.user_interaction = user_interaction
+        self.logger = logger
+        self._model = None
+        
+        super().__init__(config)  # Call parent's __init__
+        self._initialize_model()
+```
+
+**Why set fields before `super().__init__(config)`?**
+
+The parent `ILanguageModel.__init__()` calls `self._validate_config()`. If your `_validate_config()` override needs `self.token_manager`, you must set it first. If you called `super().__init__()` before setting fields, then `self.token_manager` wouldn't exist yet and would raise `AttributeError`.
+
+### 2. **`self._model = None` — Instance Attributes with Nullable Values**
+
+```python
+self._model = None  # Will hold ChatAnthropic instance later
+```
+
+This initializes an instance attribute to `None` (Python's null). Later, in `_initialize_model()`, you assign the actual LangChain model:
+
+```python
+self._model = ChatAnthropic(...)
+```
+
+This pattern is useful because:
+- It declares "this object will have a `_model` attribute"
+- It's `None` until initialized (failing faster if code tries to use an uninitialized model)
+- Type checkers understand `Optional[ChatAnthropic]` once you annotate it
+
+### 3. **`**kwargs` — Variable Keyword Arguments**
+
+```python
+def generate(self, prompt: str, **kwargs) -> GenerationResult:
+    skip_prompt = kwargs.get('skip_prompt', False)
+```
+
+`**kwargs` collects any extra keyword arguments into a dictionary. So:
+- `model.generate("hello", skip_prompt=True)` → `kwargs = {"skip_prompt": True}`
+- `model.generate("hello")` → `kwargs = {}`
+
+This lets you add optional parameters without listing them all in the signature.
+
+### 4. **Raising and Catching Exceptions**
+
+```python
+try:
+    # Do something
+except Exception as e:
+    error_msg = f"Failed: {e}"
+    self.logger.error(error_msg)
+    self.user_interaction.display_error(error_msg)
+    raise GenerationError(error_msg)  # Re-raise as domain-specific exception
+```
+
+**What's happening:**
+- `try`: run code that might fail
+- `except Exception as e`: if any `Exception` occurs, catch it as `e`
+- `raise GenerationError(...)`: re-raise as a different exception type (wrapping the original error)
+
+Why wrap? So callers don't need to know about low-level failures; they just catch `GenerationError`.
+
+### 5. **Dictionary `.get()` with Default**
+
+```python
+strategy_class = _STRATEGIES.get(self.config.generation_strategy)
+if not strategy_class:
+    raise GenerationError(...)
+```
+
+`dict.get(key, default)` returns the value if key exists, else `default` (or `None` if no default). Safer than `dict[key]` which raises `KeyError`.
+
+### 6. **@property — Computed Attributes**
+
+```python
+@property
+def provider(self) -> str:
+    return "Anthropic"
+```
+
+This makes `model.provider` work like an attribute (no parentheses), even though it's a method. Useful for:
+- Computed values: `@property def full_name(self): return f"{self.first} {self.last}"`
+- Controlled access: return a computed value instead of storing it
+
+### 7. **Overriding Parent Methods**
+
+```python
+class ClaudeModel(ILanguageModel):
+    def _validate_config(self) -> None:
+        # Override parent's abstract method
+        if not self.config.api_key:
+            raise ApiKeyError(...)
+    
+    @property
+    def provider(self) -> str:
+        # Override parent's abstract property
+        return "Anthropic"
+```
+
+When a parent class (especially ABC) has `@abstractmethod`, subclasses *must* implement them or they'll get a runtime error trying to instantiate. Python checks this at instantiation time, not definition time.
 
 ---
 

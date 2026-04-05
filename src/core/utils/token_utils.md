@@ -385,22 +385,150 @@ def list_all_models(self) -> List[str]:
 
 ---
 
-## Python → Kotlin Cheat Sheet (This File)
+## Key Python Concepts (This File)
 
-| Python | Kotlin | Where in this file |
-|--------|--------|------------------|
-| `@dataclass` | `data class` | TokenUsage |
-| `@classmethod` | `companion object fun` | resolve_model |
-| `Dict[str, Dict[str, float]]` | `Map<String, Map<String, Float>>` | COST_PER_1M_TOKENS |
-| `List[TokenUsage]` | `List<TokenUsage>` | usage_history |
-| `Optional[str]` | `String?` | type hints |
-| `Tuple[int, int, float]` | `Triple<Int, Int, Float>` | return type of check_context_window |
-| `datetime.now().isoformat()` | `Instant.now().toString()` or Java interop | timestamp field |
-| `[item for item in list]` | `list.map { ... }` | list comprehensions |
-| `**dict` unpacking | Named parameters or `mapToParams()` | TokenUsage(**dict) |
-| `if __name__ == "__main__"` | `fun main(args: Array<String>)` | Module guard at bottom |
-| `json.dump([vars(obj) for ...]` | `Gson().toJson(list)` | _save_usage_history |
-| `json.load()` returning dicts | `Gson().fromJson()` | _load_usage_history |
+### 1. **@classmethod — Class-Level Methods**
+
+```python
+@classmethod
+def resolve_model(cls, model: str) -> str:
+    if model in cls.MODEL_ALIASES:
+        return cls.MODEL_ALIASES[model]["model"]
+    return model
+```
+
+`@classmethod` methods receive the **class itself** as the first parameter (convention: `cls`), not an instance (`self`). Use when:
+- You need access to class-level data (like `MODEL_ALIASES`)
+- You want to create alternative constructors
+- You're implementing static utility methods
+
+Call it on the class, not instances:
+```python
+TokenManager.resolve_model("claude-3-haiku")  # ✓
+tm = TokenManager()
+tm.resolve_model("claude-3-haiku")  # ✓ also works but unusual
+```
+
+### 2. **Nested Dictionaries (`Dict[str, Dict[str, float]]`)**
+
+```python
+COST_PER_1M_TOKENS = {
+    "claude-3-haiku": {"input": 0.25, "output": 1.25},
+    "claude-3-opus": {"input": 15.00, "output": 75.00},
+}
+```
+
+A dictionary where values are themselves dictionaries. Access nested values:
+```python
+input_cost = COST_PER_1M_TOKENS["claude-3-haiku"]["input"]  # 0.25
+```
+
+### 3. **Class-Level Constants (UPPERCASE)**
+
+```python
+class TokenManager:
+    COST_PER_1M_TOKENS = { ... }  # Class-level constant
+    MAX_TOKENS = { ... }           # Used by all instances
+    MODEL_ALIASES = { ... }
+```
+
+Constants defined at class level (not in `__init__`) are shared by all instances. Access via `cls.CONSTANT` in class methods or `self.CONSTANT` in instance methods (Python looks up the chain). By convention, use UPPERCASE names for constants.
+
+### 4. **Tuples — Immutable Sequences (`Tuple[int, int, float]`)**
+
+```python
+def check_context_window(self, text: str, model: str) -> Tuple[int, int, float]:
+    token_count = self.count_tokens(text, model)
+    remaining = max_tokens - token_count
+    usage_percentage = (token_count / max_tokens * 100)
+    return token_count, remaining, usage_percentage
+
+# Usage
+tokens, remaining, percent = tm.check_context_window("text", "model")
+```
+
+A **tuple** is like a list but immutable (can't change it after creation). Use when you want to return multiple values. The type hint `Tuple[int, int, float]` says "returns a tuple of int, int, float in that order."
+
+### 5. **Datetime and ISO Format (`datetime.now().isoformat()`)**
+
+```python
+from datetime import datetime
+timestamp = datetime.now().isoformat()  # "2026-03-13T14:25:30.123456"
+```
+
+`isoformat()` returns a standard timestamp string that's sortable and human-readable. Useful for logging when events occurred.
+
+### 6. **List Comprehensions (Compact List Creation)**
+
+```python
+# Old way
+result = []
+for item in items:
+    result.append(process(item))
+
+# Comprehension way
+result = [process(item) for item in items]
+```
+
+List comprehensions create lists concisely. Syntax: `[expression for item in iterable if condition]`. For example:
+```python
+[x * 2 for x in [1, 2, 3]]  # [2, 4, 6]
+[x for x in items if x > 0]  # Filter positive numbers
+```
+
+### 7. **Dictionary Unpacking (`**dict`)**
+
+```python
+usage = TokenUsage(
+    timestamp=timestamp,
+    model=model,
+    **other_fields  # Unpacks dictionary into keyword arguments
+)
+
+# Equivalent to
+usage = TokenUsage(
+    timestamp=timestamp,
+    model=model,
+    tokens_used=other_fields["tokens_used"],
+    estimated_cost=other_fields["estimated_cost"],
+    ...
+)
+```
+
+`**dict` spreads a dictionary's key-value pairs as keyword arguments. Useful when you have data in a dict and want to pass it as function parameters.
+
+### 8. **Module Guard (`if __name__ == "__main__":`)**
+
+```python
+def main():
+    # Example usage
+    tm = TokenManager()
+    print(tm.get_coding_model("fast-coding"))
+
+if __name__ == "__main__":
+    main()
+```
+
+This code runs when you execute the file directly (`python token_utils.py`), but not when you import it as a module. Useful for providing examples or testing without affecting library users.
+
+### 9. **JSON Serialization (`.json`)**
+
+```python
+import json
+
+# Save list of objects
+data = [vars(usage) for usage in self.usage_history]
+# vars() converts object to dict: {"timestamp": "...", "model": "...", ...}
+
+with open(self.log_file, 'w') as f:
+    json.dump(data, f)
+
+# Load back
+with open(self.log_file, 'r') as f:
+    data = json.load(f)
+```
+
+`json.dump(data, file)` writes to file; `json.load(file)` reads back. Use `vars(obj)` to convert objects to dicts for JSON serialization.
 
 ---
 

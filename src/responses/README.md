@@ -1,6 +1,8 @@
 # Responses & Exports Directory
 
-This directory stores all outputs from the LangChain application.
+**📍 Project structure** | [← Back to Docs](../src/docs/index.md)
+
+> This directory stores all outputs from the LangChain application.
 
 ## Structure
 
